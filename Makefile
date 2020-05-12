@@ -6,7 +6,7 @@ EXECUTABLES=test
 
 all: $(EXECUTABLES)
 
-test.o: test.c utils.h
+test.o: test.c utils.h libpopcnt.h
 test: utils.o test.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 

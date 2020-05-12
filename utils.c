@@ -1,55 +1,62 @@
 #include "utils.h"
 
 
-mzd_t* load_challenge(char* filename, mzd_t* H) {
+int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
 
     FILE* fp = NULL;
-    int i = 0, j = 0;
-    const int NCOLS = 640;
-    const int NROWS = 640;
-    char line[NROWS + 2]; // line are at most NROWS char + '\n' + '\0'
+    rci_t i = 0, j = 0;
 
-    if (H->nrows != NROWS || H->ncols != 2*NCOLS) {
-        fprintf(stderr, "Error in %s: H should be a %dx%d matrix, but its a %dx%d one.\n", __func__, NROWS, 2*NCOLS, H->nrows, H->ncols);
-        return NULL;
-    }
+    // size of the non-identity part of H
+    const int NROWS = G->nrows;
+    const int NCOLS = G->ncols / 2;
+
+    char line[NROWS + 2]; // line are at most NROWS char + '\n' + '\0'
 
     fp = fopen(filename, "r");
 
     if (!fp) {
         fprintf(stderr, "Error in %s: failed to open the file %s for reading.\n", __func__, filename);
-        return NULL;
+        return 0;
     }
 
 
-    // Skip the 5 first lines
+    // Skip the 5 first lines (comments or constant stuff)
+    char buf[1200];
     for (i = 0; i < 5; i++) {
-        if (!fgets(line, NCOLS + 2, fp)) {
+        if (!fgets(buf, 1200, fp)) {
             fprintf(stderr, "Error in %s: failed to skip line (perhaps the file is incomplete?).\n", __func__);
-            return NULL;
+            return 0;
         }
     }
 
-    // 640 next lines are the non-identity part of H
-    for (i = 0; i < NCOLS; i++) {
+    mzd_t* M = mzd_init(NROWS, NCOLS);
+    mzd_t* Ik = mzd_init(NROWS, NCOLS);
+
+    for (i = 0; i < NROWS; i++) {
 
         if (!fgets(line, NROWS + 2, fp)) {
             fprintf(stderr, "Error in %s: failed to read line (perhaps the file is incomplete?).\n", __func__);
-            return NULL;
+            return 0;
         }
 
-        for (j = 0; j < NROWS; j++) {
+        for (j = 0; j < NCOLS; j++) {
 
-            // The 640 fist columns are the identity
-            if (i == j)
-                mzd_write_bit(H, i, j, 1);
+            if (i == j) {
+                mzd_write_bit(Ik, i, j, 1);
+            }
 
-            //
-            mzd_write_bit(H, j, NCOLS + i, line[j] == '1' ? 1 : 0);
+            mzd_write_bit(M, i, j, line[j] == '1' ? 1 : 0);
         }
     }
 
+    mzd_concat(G, M, Ik); // G = [M| Ik]
+
+    mzd_t* Mt = mzd_transpose(NULL, M);
+    mzd_concat(H, Ik, Mt); // H = [Ik | M^t]
+
+
+
     fclose(fp);
 
-    return H;
+    return 1;
 }

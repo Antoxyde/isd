@@ -4,8 +4,8 @@
 #include <m4ri.h>
 
 // Load the challenge given by the filename
-// return H if loaded correctly, NULL otherwise
-mzd_t* load_challenge(char* filename, mzd_t* H);
+// return 1 if everything went fine, 0 otherwise
+int load_challenge(char* filename, mzd_t* G, mzd_t* H);
 
 #endif
 

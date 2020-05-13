@@ -19,9 +19,9 @@ int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
         return 0;
     }
 
-
     // Skip the 5 first lines (comments or constant stuff)
     char buf[1200];
+
     for (i = 0; i < 5; i++) {
         if (!fgets(buf, 1200, fp)) {
             fprintf(stderr, "Error in %s: failed to skip line (perhaps the file is incomplete?).\n", __func__);
@@ -53,8 +53,6 @@ int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
 
     mzd_t* Mt = mzd_transpose(NULL, M);
     mzd_concat(H, Ik, Mt); // H = [Ik | M^t]
-
-
 
     fclose(fp);
 

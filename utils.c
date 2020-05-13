@@ -1,5 +1,17 @@
 #include "utils.h"
 
+void fisher_yates_shuffle(rci_t* values, uint32_t size) {
+
+    rci_t i,j, tmp;
+
+    for (i = 0; i < size - 2; i++) {
+        j  = rand() % size;
+        tmp = values[i];
+        values[i] = values[j];
+        values[j] = tmp;
+    }
+
+}
 
 int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
 

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 
 int sanity_check(mzd_t* G, mzd_t* H) {
@@ -20,17 +21,20 @@ int main(void) {
 
     srand(time(NULL));
 
-    uint32_t n = 1280; // Size of the instance
+    uint32_t n = 100; // Size of the instance
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
-    load_challenge("challenges/LW_1280_0", G, H);
 
-    mzd_t* min_cw = isd_prange(G, 100);
+    if (!load_challenge("challenges/LW_100_0", G, H)) {
+        return 1;
+    }
+
+    int niter = 1000;
+    mzd_t* min_cw = isd_prange(G, niter);
 
     printf("Min codeword found : \n");
-    mzd_print(min_cw);
 
-    printf("wt : %ld\n", popcnt(mzd_first_row(min_cw), n/8));
+    printf("wt : %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
     printf("Verif : %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
@@ -40,4 +44,3 @@ int main(void) {
     mzd_free(H);
 
 }
-

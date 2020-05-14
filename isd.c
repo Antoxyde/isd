@@ -2,10 +2,13 @@
 #include "utils.h"
 #include "libpopcnt.h"
 
+#include <stdint.h>
+
 mzd_t* isd_prange(mzd_t* G, int niter) {
 
     rci_t n = G->ncols, i = 0;
     mzd_t* Gis = mzd_init(n/2, n/2);
+    mzd_t* Gis_inv = mzd_init(n/2, n/2);
     mzd_t* Glw = mzd_init(n/2, n);
 
     int min_wt = n;
@@ -23,12 +26,14 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
     for (i = 0; i < niter; i++) {
 
         get_random_iset(G, Gis, indices); // Gis is n/2 x n/2
-        mzd_mul(Glw, Gis, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
+        mzd_inv_m4ri(Gis_inv, Gis, 0);
+        mzd_mul(Glw, Gis_inv, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
 
         // Check all the rows of Glw for low codewords
         for (rci_t j = 0; j < n/2; j++) {
+
             void* row = mzd_row(Glw, j);
-            int wt = popcnt(row, n/8);
+            int wt = popcnt(row, n/8 + (n % 8 != 0) );
 
             if (wt < min_wt) {
                 printf("New min wt : %d\n", wt);
@@ -39,10 +44,12 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
 
     }
 
+
     free(indices);
 
     mzd_free(Glw);
     mzd_free(Gis);
+    mzd_free(Gis_inv);
 
     return min_cw;
 }
@@ -73,6 +80,7 @@ void get_random_iset(mzd_t* G, mzd_t* Gis, rci_t* indices) {
 
     mzd_free(Gt);
     mzd_free(Gist);
+
 }
 
 

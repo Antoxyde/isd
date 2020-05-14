@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "libpopcnt.h"
+#include "simd.h"
 #include "isd.h"
 
 #include <stdint.h>
@@ -21,20 +21,25 @@ int main(void) {
 
     srand(time(NULL));
 
-    uint32_t n = 100; // Size of the instance
+    uint32_t n = 1280; // Size of the instance
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
-    if (!load_challenge("challenges/LW_100_0", G, H)) {
+    if (!load_challenge("challenges/LW_1280_0", G, H)) {
         return 1;
     }
 
-    int niter = 1000;
-    mzd_t* min_cw = isd_prange(G, niter);
+    int niter = 10000;
+
+    mzd_t* min_cw = isd_lee_brickell(G, niter);
 
     printf("Min codeword found : \n");
 
-    printf("wt : %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
+#ifdef __AVX512F__
+    printf("wt : %d\n", popcnt1280(mzd_first_row(min_cw)));
+#else
+    printf("wt : %d\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
+#endif
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
     printf("Verif : %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");

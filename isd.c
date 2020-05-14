@@ -1,58 +1,8 @@
 #include "isd.h"
 #include "utils.h"
-#include "libpopcnt.h"
+#include "simd.h"
 
 #include <stdint.h>
-
-mzd_t* isd_prange(mzd_t* G, int niter) {
-
-    rci_t n = G->ncols, i = 0;
-    mzd_t* Gis = mzd_init(n/2, n/2);
-    mzd_t* Gis_inv = mzd_init(n/2, n/2);
-    mzd_t* Glw = mzd_init(n/2, n);
-
-    int min_wt = n;
-    mzd_t* min_cw = mzd_init(1,n);
-
-    rci_t* indices = (rci_t*) malloc(sizeof(rci_t) * n);
-
-    if (!indices) {
-        fprintf(stderr, "Error in %s: failed to malloc %ld bytes.\n", __func__, sizeof(rci_t) * n);
-        return NULL;
-    }
-
-    for (i = 0; i < n; i++) indices[i] = i;
-
-    for (i = 0; i < niter; i++) {
-
-        get_random_iset(G, Gis, indices); // Gis is n/2 x n/2
-        mzd_inv_m4ri(Gis_inv, Gis, 0);
-        mzd_mul(Glw, Gis_inv, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
-
-        // Check all the rows of Glw for low codewords
-        for (rci_t j = 0; j < n/2; j++) {
-
-            void* row = mzd_row(Glw, j);
-            int wt = popcnt(row, n/8 + (n % 8 != 0) );
-
-            if (wt < min_wt) {
-                printf("New min wt : %d\n", wt);
-                min_wt = wt;
-                mzd_copy_row(min_cw, 0, Glw, j);
-            }
-        }
-
-    }
-
-
-    free(indices);
-
-    mzd_free(Glw);
-    mzd_free(Gis);
-    mzd_free(Gis_inv);
-
-    return min_cw;
-}
 
 void get_random_iset(mzd_t* G, mzd_t* Gis, rci_t* indices) {
 
@@ -83,6 +33,147 @@ void get_random_iset(mzd_t* G, mzd_t* Gis, rci_t* indices) {
 
 }
 
+
+mzd_t* isd_prange(mzd_t* G, int niter) {
+
+    rci_t n = G->ncols, i = 0;
+    mzd_t* Gis = mzd_init(n/2, n/2);
+    mzd_t* Gis_inv = mzd_init(n/2, n/2);
+    mzd_t* Glw = mzd_init(n/2, n);
+
+    int min_wt = n;
+    mzd_t* min_cw = mzd_init(1,n);
+
+    rci_t* indices = (rci_t*) malloc(sizeof(rci_t) * n);
+
+    if (!indices) {
+        fprintf(stderr, "Error in %s: failed to malloc %ld bytes.\n", __func__, sizeof(rci_t) * n);
+        return NULL;
+    }
+
+    for (i = 0; i < n; i++) indices[i] = i;
+
+    for (i = 0; i < niter; i++) {
+
+        get_random_iset(G, Gis, indices); // Gis is n/2 x n/2
+        mzd_inv_m4ri(Gis_inv, Gis, 0);
+        mzd_mul(Glw, Gis_inv, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
+
+        // Check all the rows of Glw for low codewords
+        for (rci_t j = 0; j < n/2; j++) {
+
+            void* row = mzd_row(Glw, j);
+
+#ifdef __AVX512F__
+            int wt = popcnt1280(row);
+#else
+            int wt = popcnt(row, n/8 + (n % 8 != 0) );
+#endif
+
+            if (wt < min_wt) {
+                printf("New min wt : %d\n", wt);
+                min_wt = wt;
+                mzd_copy_row(min_cw, 0, Glw, j);
+            }
+        }
+
+    }
+
+    free(indices);
+
+    mzd_free(Glw);
+    mzd_free(Gis);
+    mzd_free(Gis_inv);
+
+    return min_cw;
+}
+
+
+mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
+
+    int wt;
+    rci_t n = G->ncols, i = 0;
+    mzd_t* Gis = mzd_init(n/2, n/2);
+    mzd_t* Gis_inv = mzd_init(n/2, n/2);
+    mzd_t* Glw = mzd_init(n/2, n);
+
+    int min_wt = n;
+    mzd_t* min_cw = mzd_init(1, n);
+    mzd_t* row_k = mzd_init(1, n);
+    mzd_t* row_l = mzd_init(1, n);
+    mzd_t* row_res = mzd_init(1,n);
+
+    rci_t* indices = (rci_t*) malloc(sizeof(rci_t) * n);
+
+    if (!indices) {
+        fprintf(stderr, "Error in %s: failed to malloc %ld bytes.\n", __func__, sizeof(rci_t) * n);
+        return NULL;
+    }
+
+    for (i = 0; i < n; i++) indices[i] = i;
+
+    for (i = 0; i < niter; i++) {
+
+        get_random_iset(G, Gis, indices); // Gis is n/2 x n/2
+        mzd_inv_m4ri(Gis_inv, Gis, 0);
+        mzd_mul(Glw, Gis_inv, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
+
+        // Check all the CL of the rows for low cw
+        for (rci_t k = 0; k < n/2; k++) {
+
+#ifdef __AVX512F__
+            wt = popcnt1280(mzd_row(Glw, k));
+#else
+            wt = popcnt(mzd_row(Glw, k), n/8 + (n % 8 != 0) );
+#endif
+
+
+
+            if (wt < min_wt) {
+                printf("New min wt : %d\n", wt);
+                min_wt = wt;
+                mzd_copy_row(min_cw, 0, Glw, k);
+            }
+
+
+            for (rci_t l = 0; l < n/2; l++) {
+                if (k != l) {
+
+                    // TODO : optimized CL, without copying to a matrix
+                    // eg. using 2 _mm512_loadu_epi8 and one
+
+                    mzd_copy_row(row_l, 0, Glw, l);
+                    mzd_copy_row(row_k, 0, Glw, k);
+                    mzd_add(row_res, row_k, row_l);
+
+#ifdef __AVX512F__
+                    wt = popcnt1280(mzd_first_row(row_res));
+#else
+                    wt = popcnt(mzd_first_row(row_res), n/8 + (n % 8 != 0) );
+#endif
+
+                    if (wt < min_wt) {
+                        printf("New min wt : %d\n", wt);
+                        min_wt = wt;
+                        mzd_copy(min_cw, row_res);
+                    }
+                }
+            }
+        }
+
+    }
+
+    free(indices);
+
+    mzd_free(row_l);
+    mzd_free(row_k);
+    mzd_free(row_res);
+    mzd_free(Glw);
+    mzd_free(Gis);
+    mzd_free(Gis_inv);
+
+    return min_cw;
+}
 
 
 

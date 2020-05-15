@@ -1,7 +1,7 @@
 CC=gcc
 INCDIRS=-I/usr/include/m4ri/
 LDFLAGS=-lm4ri
-override CFLAGS += -g -Wall $(INCDIRS) --std=c99 -O3
+override CFLAGS += -g -Wall $(INCDIRS) --std=c99 -O1
 EXECUTABLES=main
 
 all: $(EXECUTABLES)

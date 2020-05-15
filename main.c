@@ -29,13 +29,13 @@ int main(void) {
         return 1;
     }
 
-    int niter = 10000;
+    int niter = 100;
 
     mzd_t* min_cw = isd_lee_brickell(G, niter);
 
     printf("Min codeword found : \n");
 
-#ifdef __AVX512F__
+#if defined(__AVX512F__) && defined(__AVX512BW__)
     printf("wt : %d\n", popcnt1280(mzd_first_row(min_cw)));
 #else
     printf("wt : %d\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));

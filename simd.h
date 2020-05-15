@@ -2,7 +2,7 @@
 #define ISD_POPCNT_H
 
 
-#ifdef __AVX512F__
+#if defined(__AVX512F__) && defined(__AVX512BW__)
 
 #include <m4ri.h>
 #include <immintrin.h>
@@ -149,9 +149,23 @@ static inline int cl_and_popcnt1280(mzd_t const* M1, mzd_t const* M2, rci_t i, r
 
 #else
 
-static inline int popcnt(void* data, int size) {
-    // TODO
-    return 0;
+static inline uint16_t popcnt(void* data, int size) {
+
+    int i = 0;
+    uint16_t result = 0;
+    uint64_t* values_64 = (uint64_t*) data;
+    int len = size / 8;
+    int remaining = size % 8;
+
+    for (i = 0; i < len; i++)
+        result += __builtin_popcountll(values_64[i]);
+
+    uint8_t* values_8 = (uint8_t*) (data + size * 8);
+
+    for (i = 0; i < remaining; i++)
+        result += __builtin_popcount(values_8[i]);
+
+    return result;
 }
 
 #endif

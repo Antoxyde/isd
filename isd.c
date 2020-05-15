@@ -64,7 +64,7 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
 
             void* row = mzd_row(Glw, j);
 
-#ifdef __AVX512F__
+#if defined(__AVX512F__) && defined(__AVX512BW__)
             int wt = popcnt1280(row);
 #else
             int wt = popcnt(row, n/8 + (n % 8 != 0) );
@@ -121,7 +121,7 @@ mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
         // Check all the CL of the rows for low cw
         for (rci_t k = 0; k < n/2; k++) {
 
-#ifdef __AVX512F__
+#if defined(__AVX512F__) && defined(__AVX512BW__)
             wt = popcnt1280(mzd_row(Glw, k));
 #else
             wt = popcnt(mzd_row(Glw, k), n/8 + (n % 8 != 0) );
@@ -146,7 +146,7 @@ mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
                     mzd_copy_row(row_k, 0, Glw, k);
                     mzd_add(row_res, row_k, row_l);
 
-#ifdef __AVX512F__
+#if defined(__AVX512F__) && defined(__AVX512BW__)
                     wt = popcnt1280(mzd_first_row(row_res));
 #else
                     wt = popcnt(mzd_first_row(row_res), n/8 + (n % 8 != 0) );

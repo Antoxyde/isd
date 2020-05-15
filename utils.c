@@ -1,8 +1,8 @@
 #include "utils.h"
 
-void fisher_yates_shuffle(rci_t* values, uint32_t size) {
+void fisher_yates_shuffle(rci_t* values, size_t size) {
 
-    rci_t i,j, tmp;
+    size_t i,j, tmp;
 
     for (i = 0; i < size - 2; i++) {
         j  = rand() % size;

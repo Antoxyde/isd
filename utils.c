@@ -4,8 +4,8 @@ void fisher_yates_shuffle(rci_t* values, size_t size) {
 
     size_t i,j, tmp;
 
-    for (i = 0; i < size - 2; i++) {
-        j  = rand() % size;
+    for (i = size - 1; i > 0; i--) {
+        j  = rand() % (i + 1);
         tmp = values[i];
         values[i] = values[j];
         values[j] = tmp;

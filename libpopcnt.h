@@ -188,7 +188,7 @@ static inline uint64_t popcnt64(uint64_t x)
 
 static inline uint64_t popcnt64(uint64_t x)
 {
-  return _mm_popcnt_u32((uint32_t) x) + 
+  return _mm_popcnt_u32((uint32_t) x) +
          _mm_popcnt_u32((uint32_t)(x >> 32));
 }
 
@@ -755,7 +755,7 @@ static inline uint64_t popcnt(const void* data, uint64_t size)
        * and 31 * 8 bits = 248 which is OK.
        */
       uint64_t limit = (i + 31 < iters) ? i + 31 : iters;
-  
+
       /* Each iteration processes 64 bytes */
       for (; i < limit; i++)
       {

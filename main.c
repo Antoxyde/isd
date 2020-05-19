@@ -7,7 +7,6 @@
 #include <time.h>
 #include <math.h>
 
-
 int sanity_check(mzd_t* G, mzd_t* H) {
 
     int result = 0;
@@ -38,7 +37,6 @@ int main(void) {
         return 1;
     }
 
-
     start = clock();
     mzd_t* min_cw = isd_prange(G, niter);
     stop = clock();
@@ -53,7 +51,6 @@ int main(void) {
     printf("Iter/s : %.3f\n", ((double)niter)/time_elapsed);
 
     print_cw(min_cw);
-
 
     mzd_free(min_cw);
     mzd_free(G);

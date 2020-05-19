@@ -1,3 +1,6 @@
 [submodule "master"]
 	path = master
 	url = https://bitbucket.org/malb/m4ri/src/master/
+[submodule "m4ri"]
+	path = m4ri
+	url = https://bitbucket.org/malb/m4ri/src/master/

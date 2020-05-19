@@ -17,6 +17,12 @@ int sanity_check(mzd_t* G, mzd_t* H) {
     return result == 0;
 }
 
+void print_cw(mzd_t* cw) {
+    printf("cw : ");
+    for (int i = 0; i < cw->ncols; i++) printf(mzd_read_bit(cw, 0, i) ? "1" : "0");
+    printf("\n");
+}
+
 int main(void) {
 
     srand(time(NULL));
@@ -45,6 +51,8 @@ int main(void) {
     printf("Verif : %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
     printf("Total time: %.3f\n", time_elapsed);
     printf("Iter/s : %.3f\n", ((double)niter)/time_elapsed);
+
+    print_cw(min_cw);
 
 
     mzd_free(min_cw);

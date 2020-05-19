@@ -1,17 +1,15 @@
 #include "isd.h"
 #include "utils.h"
-#include "simd.h"
+#include "libpopcnt.h"
 
 #include <stdint.h>
 
-void get_random_iset(mzd_t* G, mzd_t* Gis, rci_t* indices) {
+void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
 
-    rci_t n = G->ncols;
+    rci_t n = Gt->nrows;
 
     // M4ri have no function to copy a column from a matrix to another
     // so we transpose and copy rows instead
-    mzd_t* Gt = mzd_transpose(NULL, G);
-    mzd_t* Gist = mzd_init(n/2, n/2);
 
     // while our matrix is not invertible
     do {
@@ -23,13 +21,10 @@ void get_random_iset(mzd_t* G, mzd_t* Gis, rci_t* indices) {
             mzd_copy_row(Gist, col, Gt, indices[col]);
         }
 
-    } while (mzd_echelonize(Gist, 0) != n/2);
+    } while (mzd_echelonize(Gist, 0) < (n/2 - (n/2) /80) );
 
     // Since we copied rows from Gt, we have to tranpose back again
     mzd_transpose(Gis, Gist);
-
-    mzd_free(Gt);
-    mzd_free(Gist);
 
 }
 
@@ -40,6 +35,9 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
     mzd_t* Gis = mzd_init(n/2, n/2);
     mzd_t* Gis_inv = mzd_init(n/2, n/2);
     mzd_t* Glw = mzd_init(n/2, n);
+
+    mzd_t* Gt = mzd_transpose(NULL, G);
+    mzd_t* Gist = mzd_init(n/2, n/2);
 
     int min_wt = n;
     mzd_t* min_cw = mzd_init(1,n);
@@ -55,7 +53,8 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
 
     for (i = 0; i < niter; i++) {
 
-        get_random_iset(G, Gis, indices); // Gis is n/2 x n/2
+        get_random_iset(Gt, Gis, Gist, indices); // Gis is n/2 x n/2
+
         mzd_inv_m4ri(Gis_inv, Gis, 0);
         mzd_mul(Glw, Gis_inv, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
 
@@ -63,15 +62,10 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
         for (rci_t j = 0; j < n/2; j++) {
 
             void* row = mzd_row(Glw, j);
-
-#if defined(__AVX512F__) && defined(__AVX512BW__)
-            int wt = popcnt1280(row);
-#else
-            int wt = popcnt(row, n/8 + (n % 8 != 0) );
-#endif
+            long int wt = popcnt(row, n/8 + (n % 8 != 0) );
 
             if (wt < min_wt) {
-                printf("New min wt : %d\n", wt);
+                printf("New min wt : %ld\n", wt);
                 min_wt = wt;
                 mzd_copy_row(min_cw, 0, Glw, j);
             }
@@ -81,6 +75,8 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
 
     free(indices);
 
+    mzd_free(Gist);
+    mzd_free(Gt);
     mzd_free(Glw);
     mzd_free(Gis);
     mzd_free(Gis_inv);
@@ -96,6 +92,8 @@ mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
     mzd_t* Gis = mzd_init(n/2, n/2);
     mzd_t* Gis_inv = mzd_init(n/2, n/2);
     mzd_t* Glw = mzd_init(n/2, n);
+    mzd_t* Gt = mzd_transpose(NULL, G);
+    mzd_t* Gist = mzd_init(n/2, n/2);
 
     int min_wt = n;
     mzd_t* min_cw = mzd_init(1, n);
@@ -114,20 +112,14 @@ mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
 
     for (i = 0; i < niter; i++) {
 
-        get_random_iset(G, Gis, indices); // Gis is n/2 x n/2
+        get_random_iset(Gt, Gis, Gist, indices); // Gis is n/2 x n/2
         mzd_inv_m4ri(Gis_inv, Gis, 0);
         mzd_mul(Glw, Gis_inv, G, 0); // Gi * G = Glw  ,  (n/2 x n/2) * (n/2 x n) => n/2 x n
 
         // Check all the CL of the rows for low cw
         for (rci_t k = 0; k < n/2; k++) {
 
-#if defined(__AVX512F__) && defined(__AVX512BW__)
-            wt = popcnt1280(mzd_row(Glw, k));
-#else
             wt = popcnt(mzd_row(Glw, k), n/8 + (n % 8 != 0) );
-#endif
-
-
 
             if (wt < min_wt) {
                 printf("New min wt : %d\n", wt);
@@ -146,11 +138,7 @@ mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
                     mzd_copy_row(row_k, 0, Glw, k);
                     mzd_add(row_res, row_k, row_l);
 
-#if defined(__AVX512F__) && defined(__AVX512BW__)
-                    wt = popcnt1280(mzd_first_row(row_res));
-#else
                     wt = popcnt(mzd_first_row(row_res), n/8 + (n % 8 != 0) );
-#endif
 
                     if (wt < min_wt) {
                         printf("New min wt : %d\n", wt);
@@ -168,12 +156,14 @@ mzd_t* isd_lee_brickell(mzd_t* G, int niter) {
     mzd_free(row_l);
     mzd_free(row_k);
     mzd_free(row_res);
+
+    mzd_free(Gt);
     mzd_free(Glw);
+    mzd_free(Gist);
     mzd_free(Gis);
     mzd_free(Gis_inv);
 
     return min_cw;
 }
-
 
 

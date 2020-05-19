@@ -1,7 +1,7 @@
 CC=gcc
 INCDIRS=-I/usr/include/m4ri/
 LDFLAGS=-lm4ri
-override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99
+override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99 -O2
 EXECUTABLES=main
 
 all: $(EXECUTABLES)
@@ -9,8 +9,8 @@ all: $(EXECUTABLES)
 %.o : %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
-main.o: main.c isd.h utils.h simd.h
-isd.o: isd.c isd.h utils.h simd.h
+main.o: main.c isd.h utils.h libpopcnt.h
+isd.o: isd.c isd.h utils.h libpopcnt.h
 main: utils.o main.o isd.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 

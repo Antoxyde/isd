@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "simd.h"
+#include "libpopcnt.h"
 #include "isd.h"
 
 #include <stdint.h>
@@ -20,8 +20,11 @@ int sanity_check(mzd_t* G, mzd_t* H) {
 int main(void) {
 
     srand(time(NULL));
+    clock_t start, stop;
+    double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
+    int niter = 10000;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
@@ -29,20 +32,20 @@ int main(void) {
         return 1;
     }
 
-    int niter = 100;
 
-    mzd_t* min_cw = isd_lee_brickell(G, niter);
-
-    printf("Min codeword found : \n");
-
-#if defined(__AVX512F__) && defined(__AVX512BW__)
-    printf("wt : %d\n", popcnt1280(mzd_first_row(min_cw)));
-#else
-    printf("wt : %d\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
-#endif
+    start = clock();
+    mzd_t* min_cw = isd_prange(G, niter);
+    stop = clock();
+    time_elapsed = ((double)(stop - start))/CLOCKS_PER_SEC;
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
+
+    printf("Min codeword found : \n");
+    printf("wt : %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
     printf("Verif : %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
+    printf("Total time: %.3f\n", time_elapsed);
+    printf("Iter/s : %.3f\n", ((double)niter)/time_elapsed);
+
 
     mzd_free(min_cw);
     mzd_free(G);

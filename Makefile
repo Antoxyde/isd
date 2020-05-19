@@ -1,5 +1,5 @@
 CC=gcc
-INCDIRS=-Im4ri/m4ri/
+INCDIRS=-Im4ri/m4ri/ -Im4ri
 LDFLAGS=
 override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99 -O2
 EXECUTABLES=main
@@ -11,7 +11,7 @@ all: $(EXECUTABLES)
 
 main.o: main.c isd.h utils.h libpopcnt.h
 isd.o: isd.c isd.h utils.h libpopcnt.h
-main: utils.o main.o isd.o libm4ri.so
+main: utils.o main.o isd.o libm4ri-0.0.20200125.so
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:

@@ -129,7 +129,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         for (rci_t j = 0; j < n/2; j++) {
 
             void* row = mzd_row(Glw, j);
-            long int wt = popcnt(row, n/8 + (n % 8 != 0) );
+            long int wt = 1 + popcnt(row + (n/16), n/16 + (n % 8 != 0) );
 
             if (wt < min_wt) {
                 printf("New min wt : %ld\n", wt);

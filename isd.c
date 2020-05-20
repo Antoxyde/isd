@@ -28,26 +28,26 @@ void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
 
 }
 
-void canteaut_next_iset_naive(mzd_t* Glw, rci_t* indices) {
+void canteaut_next_iset_naive(mzd_t* Glw, rci_t* perms) {
 
-    rci_t n = Glw->ncols, lambda_index, mu_index, lambda, mu,  lambda_row;
+    rci_t n = Glw->ncols, lambda, mu;
 
     do {
-        lambda_index = rand() % (n/2);
-        mu_index = (rand() % (n/2)) + (n/2);
-    } while (mzd_read_bit(Glw, indices[lambda_index], indices[mu_index]) == 0);
+        lambda = rand() % (n/2);
+        mu = (rand() % (n/2)) + (n/2);
+    } while (mzd_read_bit(Glw, lambda, mu) == 0);
 
-    mu = indices[mu_index];
-    lambda = indices[lambda_index];
-    indices[mu_index] = lambda;
-    indices[lambda_index] = mu;
+    mzd_col_swap(Glw, lambda, mu);
 
-    for (rci_t i = 0; i < n/2; i++) {
-        if (i != lambda_row && mzd_read_bit(Glw, i, mu) == 1) {
-            mzd_row_add(Glw, lambda_row, i);
+    rci_t tmp = perms[lambda];
+    perms[lambda] = perms[mu];
+    perms[mu] = tmp;
+
+     for (rci_t i = 0; i < n/2; i++) {
+        if (i != lambda && mzd_read_bit(Glw, i, lambda) == 1) {
+            mzd_row_add(Glw, lambda, i);
         }
     }
-
 }
 
 mzd_t* isd_prange(mzd_t* G, int niter) {
@@ -109,12 +109,13 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     rci_t n = G->ncols, i = 0;
 
-    rci_t* indices = (rci_t*) malloc(sizeof(rci_t) * n);
-    if (!indices) {
+    rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
+    rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
+    if (!column_perms) {
         fprintf(stderr, "Error in %s: failed to malloc %ld bytes.\n", __func__, sizeof(rci_t) * n);
         return NULL;
     }
-    for (i = 0; i < n; i++) indices[i] = i;
+    for (i = 0; i < n; i++) column_perms[i] = i;
 
     int min_wt = n;
     mzd_t* min_cw = mzd_init(1,n);
@@ -122,7 +123,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     for (i = 0; i < niter; i++) {
 
-        canteaut_next_iset_naive(Glw, indices);
+        canteaut_next_iset_naive(Glw, column_perms);
 
         // Check all the rows of Glw for low codewords
         for (rci_t j = 0; j < n/2; j++) {
@@ -134,15 +135,25 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
                 printf("New min wt : %ld\n", wt);
                 min_wt = wt;
                 mzd_copy_row(min_cw, 0, Glw, j);
+                memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
             }
         }
+    }
 
+    // Since we applied many columns permutations, which were all logged in perms
+    // we have to permute back to get a valid codeword
+    mzd_t* result = mzd_copy(NULL, min_cw);
+
+    for (i = 0; i < n; i++) {
+        if (i != column_perms_copy[i]) {
+            mzd_write_bit(result, 0, column_perms_copy[i], mzd_read_bit(min_cw, 0, i));
+        }
     }
 
     mzd_free(Glw);
+    mzd_free(min_cw);
 
-    return min_cw;
-
+    return result;
 }
 
 

@@ -9,7 +9,7 @@
 //  - indices, a set of values {0..n} to be shuffled
 void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices);
 
-void canteaut_next_iset_naive(mzd_t* Glw);
+void canteaut_next_iset_naive(mzd_t* Glw, rci_t* indices);
 
 // Input:
 //  - G, a n/2 x n generator matrix

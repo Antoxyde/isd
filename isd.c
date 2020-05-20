@@ -28,29 +28,27 @@ void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
 
 }
 
-void canteaut_next_iset_naive(mzd_t* Glw) {
+void canteaut_next_iset_naive(mzd_t* Glw, rci_t* indices) {
 
-    rci_t n = Glw->ncols, lambda, mu;
+    rci_t n = Glw->ncols, lambda_index, mu_index, lambda, mu,  lambda_row;
 
     do {
-        lambda = rand() % (n/2);
-        mu = (rand() % (n/2)) + (n/2);
-    } while (mzd_read_bit(Glw, lambda, mu) == 0);
+        lambda_index = rand() % (n/2);
+        mu_index = (rand() % (n/2)) + (n/2);
+    } while (mzd_read_bit(Glw, indices[lambda_index], indices[mu_index]) == 0);
 
-    // swap the lambda and mu column
-    mzd_col_swap(Glw, lambda, mu);
+    mu = indices[mu_index];
+    lambda = indices[lambda_index];
+    indices[mu_index] = lambda;
+    indices[lambda_index] = mu;
 
-    printf("lambda = %d, mu = %d\n", lambda, mu);
     for (rci_t i = 0; i < n/2; i++) {
-        if (i != lambda && mzd_read_bit(Glw, i, lambda) == 1) {
-            printf("row[%d] += row[%d]\n", i, lambda);
-            mzd_row_add(Glw, lambda, i);
+        if (i != lambda_row && mzd_read_bit(Glw, i, mu) == 1) {
+            mzd_row_add(Glw, lambda_row, i);
         }
     }
 
-
 }
-
 
 mzd_t* isd_prange(mzd_t* G, int niter) {
 
@@ -111,13 +109,20 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     rci_t n = G->ncols, i = 0;
 
+    rci_t* indices = (rci_t*) malloc(sizeof(rci_t) * n);
+    if (!indices) {
+        fprintf(stderr, "Error in %s: failed to malloc %ld bytes.\n", __func__, sizeof(rci_t) * n);
+        return NULL;
+    }
+    for (i = 0; i < n; i++) indices[i] = i;
+
     int min_wt = n;
     mzd_t* min_cw = mzd_init(1,n);
     mzd_t* Glw = mzd_copy(NULL, G);
 
     for (i = 0; i < niter; i++) {
 
-        canteaut_next_iset_naive(Glw);
+        canteaut_next_iset_naive(Glw, indices);
 
         // Check all the rows of Glw for low codewords
         for (rci_t j = 0; j < n/2; j++) {

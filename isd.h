@@ -9,6 +9,7 @@
 //  - indices, a set of values {0..n} to be shuffled
 void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices);
 
+void canteaut_next_iset_naive(mzd_t* Glw);
 
 // Input:
 //  - G, a n/2 x n generator matrix
@@ -22,6 +23,6 @@ mzd_t* isd_prange(mzd_t* G, int niter);
 //  - niter, the number of iteration to make
 //  Output:
 //  - min_cw, the lowest codeword found
-mzd_t* isd_lee_brickell(mzd_t* G, int niter);
+mzd_t* isd_prange_canteaut(mzd_t* G, int niter);
 
 #endif

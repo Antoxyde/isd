@@ -17,7 +17,7 @@ int sanity_check(mzd_t* G, mzd_t* H) {
 }
 
 void print_cw(mzd_t* cw) {
-    printf("cw : ");
+    printf("cw = ");
     for (int i = 0; i < cw->ncols; i++) printf(mzd_read_bit(cw, 0, i) ? "1" : "0");
     printf("\n");
 }
@@ -29,7 +29,7 @@ int main(void) {
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    int niter = 10000;
+    int niter = 100;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
@@ -38,7 +38,7 @@ int main(void) {
     }
 
     start = clock();
-    mzd_t* min_cw = isd_prange(G, niter);
+    mzd_t* min_cw = isd_prange_canteaut(G, niter);
     stop = clock();
     time_elapsed = ((double)(stop - start))/CLOCKS_PER_SEC;
 

@@ -62,6 +62,7 @@ int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
     }
 
     mzd_concat(G, M, Ik); // G = [M| Ik]
+    mzd_echelonize(G, 1);
 
     mzd_t* Mt = mzd_transpose(NULL, M);
     mzd_concat(H, Ik, Mt); // H = [Ik | M^t]

@@ -1,7 +1,7 @@
 CC=gcc
 INCDIRS=-Im4ri/m4ri/ -Im4ri
 LDFLAGS=
-override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99 -O2 -Wl,-rpath=.
+override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99 -O3 -Wl,-rpath=.
 EXECUTABLES=main
 
 all: $(EXECUTABLES)

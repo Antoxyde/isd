@@ -2,7 +2,6 @@
 #include "utils.h"
 #include "libpopcnt.h"
 
-
 void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
 
     rci_t n = Gt->nrows;
@@ -24,7 +23,6 @@ void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
 
     // Since we copied rows from Gt, we have to tranpose back again
     mzd_transpose(Gis, Gist);
-
 }
 
 void canteaut_next_iset_naive(mzd_t* Glw, rci_t* perms) {
@@ -51,6 +49,8 @@ void canteaut_next_iset_naive(mzd_t* Glw, rci_t* perms) {
 
 
 void canteaut_next_iset(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
+
+    // Canteaut improvement to derive a new iset from a previous one
 
     int current = 0;
     rci_t n = Glw->ncols, lambda, mu;

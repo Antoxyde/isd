@@ -133,14 +133,17 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
 
 mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
-    rci_t n = G->ncols, i = 0;
+    rci_t n = G->ncols, i = 0, j = 0;
+    void* row = NULL;
+    long int wt = 0;
+
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* affected_rows = (rci_t*) malloc(sizeof(rci_t) * n/2);
 
     if (!column_perms || !column_perms_copy || !affected_rows) {
-        fprintf(stderr, "Error in %s: failed to malloc %ld bytes.\n", __func__, sizeof(rci_t) * n);
+        fprintf(stderr, "Error in %s:  malloc failed.\n", __func__);
         return NULL;
     }
     for (i = 0; i < n; i++) column_perms[i] = i;
@@ -154,14 +157,16 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         canteaut_next_iset(Glw, column_perms, affected_rows);
 
         // Check all the rows that changed since last iset for low codewords
-        for (rci_t j = 0; affected_rows[j] > 0; j++) {
+        for (j = 0; affected_rows[j] > 0; j++) {
 
-            void* row = mzd_row(Glw, affected_rows[j]);
-            long int wt = 1 + popcnt(row + (n/16), n/16 + (n % 8 != 0) );
+            row = mzd_row(Glw, affected_rows[j]);
+            wt = 1 + popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
 
             if (wt < min_wt) {
                 printf("New min wt : %ld\n", wt);
                 min_wt = wt;
+
+                // Save our new lowest row and all the permutations made until now
                 mzd_copy_row(min_cw, 0, Glw, affected_rows[j]);
                 memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
             }

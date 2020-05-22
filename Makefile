@@ -10,8 +10,8 @@ all: $(EXECUTABLES)
 	$(CC) $(CFLAGS) -c $<
 
 main.o: main.c isd.h utils.h libpopcnt.h
-isd.o: isd.c isd.h utils.h libpopcnt.h
-main: utils.o main.o isd.o libm4ri-0.0.20200125.so
+isd.o: isd.c isd.h utils.h libpopcnt.h iset.h
+main: utils.o main.o isd.o libm4ri-0.0.20200125.so iset.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:

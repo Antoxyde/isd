@@ -160,7 +160,8 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         for (j = 0; affected_rows[j] > 0; j++) {
 
             row = mzd_row(Glw, affected_rows[j]);
-            wt = 1 + popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
+            //wt = 1 + popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
+            wt = 1 + popcnt64_unrolled(row + (n/16), 10);
 
             if (wt < min_wt) {
                 printf("New min wt : %ld\n", wt);

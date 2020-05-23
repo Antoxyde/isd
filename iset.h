@@ -9,12 +9,6 @@
 //  - indices, a set of values {0..n} to be shuffled
 void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices);
 
-
-// Input:
-//  - Glw, an n/2 x n matrix in systematic form
-//  - indices, the permutation list to update
-void canteaut_next_iset_naive(mzd_t* Glw, rci_t* perms);
-
 // Input:
 //  - Glw, an n/2 x n matrix in systematic form
 //  - indices, the permutation list to update

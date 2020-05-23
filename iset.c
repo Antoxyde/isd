@@ -24,26 +24,32 @@ void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
     mzd_transpose(Gis, Gist);
 }
 
-void canteaut_next_iset_naive(mzd_t* Glw, rci_t* perms) {
+void canteaut_next_iset(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
 
-    rci_t n = Glw->ncols, lambda, mu;
+    // Canteaut improvement to derive a new iset from a previous one
+
+    int pos = 0; // next free position to write in affected_rows
+    rci_t n = Glw->ncols, lambda, mu, i, tmp;
 
     do {
         lambda = rand() % (n/2);
-        mu = (rand() % (n/2)) + (n/2);
+        mu = (rand() % (n/2) ) + (n/2);
     } while (mzd_read_bit(Glw, lambda, mu) == 0);
 
     mzd_col_swap(Glw, lambda, mu);
 
-    rci_t tmp = perms[lambda];
+    tmp = perms[lambda];
     perms[lambda] = perms[mu];
     perms[mu] = tmp;
 
-     for (rci_t i = 0; i < n/2; i++) {
+    for (i = 0; i < n/2; i++) {
         if (i != lambda && mzd_read_bit(Glw, i, lambda) == 1) {
+            affected_rows[pos++] = i;
             mzd_row_add(Glw, lambda, i);
         }
     }
+
+    affected_rows[pos] = -1;
 }
 
 void canteaut_next_iset_test(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
@@ -51,18 +57,18 @@ void canteaut_next_iset_test(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
     // Canteaut improvement to derive a new iset from a previous one
 
     int current = 0;
-    rci_t n = Glw->ncols * 2, lambda, mu;
+    rci_t n = Glw->ncols * 2, lambda, mu, i, tmp;
 
     do {
         lambda = rand() % (n/2);
-        mu = (rand() % (n/2));
+        mu = rand() % (n/2);
     } while (mzd_read_bit(Glw, lambda, mu) == 0);
 
-    rci_t tmp = perms[lambda];
-    perms[lambda] = perms[mu + n/2];
-    perms[mu + n/2] = tmp;
+    tmp = perms[lambda];
+    perms[lambda] = perms[mu + (n/2)];
+    perms[mu + (n/2)] = tmp;
 
-     for (rci_t i = 0; i < n/2; i++) {
+    for (i = 0; i < n/2; i++) {
         if (i != lambda && mzd_read_bit(Glw, i, mu) == 1) {
             affected_rows[current++] = i;
             mzd_row_add(Glw, lambda, i);

@@ -1,7 +1,10 @@
+
 #include "isd.h"
 #include "utils.h"
 #include "libpopcnt.h"
-#include "iset.h"
+
+#include  "xoshiro256starstar.h"
+
 
 mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
@@ -35,8 +38,8 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
     for (i = 0; i < niter; i++) {
 
         do {
-            lambda = rand() % (n/2);
-            mu = rand() % (n/2);
+            lambda = xoshiro256starstar_random() % (n/2);
+            mu = xoshiro256starstar_random() % (n/2);
         } while (mzd_read_bit(Glw, lambda, mu) == 0);
 
         // Log the column swapping

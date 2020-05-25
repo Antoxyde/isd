@@ -33,7 +33,7 @@ static uint64_t __my_little_xoshiro256starstar__s[4];
 
 /* Inits */
 
-void __my_little_xoshiro256starstar_initialization(uint64_t iv[4])
+static void __my_little_xoshiro256starstar_initialization(uint64_t iv[4])
 {
 	__my_little_xoshiro256starstar__s[0] = iv[0];
 	__my_little_xoshiro256starstar__s[1] = iv[1];
@@ -46,10 +46,9 @@ void __my_little_xoshiro256starstar_initialization(uint64_t iv[4])
 
 
 /* This function initializes one state with a key from /dev/urandom */
-void __my_little_xoshiro256starstar_unseeded_init()
+static void __my_little_xoshiro256starstar_unseeded_init()
 {
-	FILE *urd = fopen("/dev/urandom", "r");
-	uint64_t iv[4] = {1,1,1,1};
+	FILE *urd = fopen("/dev/urandom", "r"); uint64_t iv[4] = {1,1,1,1};
 
 	if (urd == NULL)
 	{
@@ -68,7 +67,7 @@ void __my_little_xoshiro256starstar_unseeded_init()
 }
 
 
-uint64_t __my_little_xoshiro256starstar__next__unsafe(void) {
+static uint64_t __my_little_xoshiro256starstar__next__unsafe(void) {
 	const uint64_t result_starstar = __my_little_xoshiro256starstar__rotl(__my_little_xoshiro256starstar__s[1] * 5, 7) * 9;
 
 	const uint64_t t = __my_little_xoshiro256starstar__s[1] << 17;
@@ -85,7 +84,7 @@ uint64_t __my_little_xoshiro256starstar__next__unsafe(void) {
 	return result_starstar;
 }
 
-uint64_t __my_little_xoshiro256starstar__next(void) {
+static uint64_t __my_little_xoshiro256starstar__next(void) {
 	if (!__my_little_init_was_done)
 	{
 		__my_little_xoshiro256starstar_unseeded_init();
@@ -100,7 +99,7 @@ uint64_t __my_little_xoshiro256starstar__next(void) {
    to 2^128 calls to __my_little_xoshiro256starstar__next(); it can be used to generate 2^128
    non-overlapping subsequences for parallel computations. */
 
-void __my_little_xoshiro256starstar__jump(void) {
+static void __my_little_xoshiro256starstar__jump(void) {
 	static const uint64_t JUMP[] = { 0x180ec6d33cfd0aba, 0xd5a61266f0c9392c, 0xa9582618e03fc9aa, 0x39abdc4529b1661c };
 
 	uint64_t s0 = 0;
@@ -131,7 +130,7 @@ void __my_little_xoshiro256starstar__jump(void) {
    from each of which jump() will generate 2^64 non-overlapping
    subsequences for parallel distributed computations. */
 
-void __my_little_xoshiro256starstar__long_jump(void) {
+static void __my_little_xoshiro256starstar__long_jump(void) {
 	static const uint64_t LONG_JUMP[] = { 0x76e15d3efefdcbbf, 0xc5004e441c522fb3, 0x77710069854ee241, 0x39109bb02acbe635 };
 
 	uint64_t s0 = 0;
@@ -159,17 +158,17 @@ void __my_little_xoshiro256starstar__long_jump(void) {
  * Aliases
  */
 
-uint64_t xoshiro256starstar_random(void)
+static uint64_t xoshiro256starstar_random(void)
 {
 	return __my_little_xoshiro256starstar__next();
 }
 
-uint64_t xoshiro256starstar_random_unsafe(void)
+static uint64_t xoshiro256starstar_random_unsafe(void)
 {
 	return __my_little_xoshiro256starstar__next__unsafe();
 }
 
-void xoshiro256starstar_random_set(uint64_t seed[4])
+static void xoshiro256starstar_random_set(uint64_t seed[4])
 {
 	__my_little_xoshiro256starstar_initialization(seed);
 }

@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "libpopcnt.h"
 #include "isd.h"
+#include "xoshiro256starstar.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@
 
 int main(void) {
 
-    int seed = time(0);
+    uint64_t seed[4] = {1,2,3,4};
     clock_t start, stop;
     double time_elapsed;
 
@@ -23,7 +24,8 @@ int main(void) {
         return 1;
     }
 
-    srand(seed);
+    xoshiro256starstar_random_set(seed);
+
     start = clock();
     mzd_t* min_cw = isd_prange_canteaut(G, niter);
 

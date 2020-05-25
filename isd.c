@@ -38,7 +38,9 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     for (i = 0; i < niter; i++) {
 
-        // Find lambda, mu s.t. G[lambda, mu] == 1
+        // Find lambda, mu s.t. Glw[lambda, mu] == 1
+        // Assuming that a whole row can't be totally 0, but that 64 bits subset of that row
+
         lambda = xoshiro256starstar_random() % (n/2);
         do {
             mu = xoshiro256starstar_random() % 10;
@@ -63,17 +65,23 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         // so we don't have to rewrite a 1 in col mu everytime we add the lambda'th row
         mzd_write_bit(Glw, lambda, mu, 0);
 
+        // Add the lambda'th row to every other row that have a 1 in the mu'th column
         for (j = 0; j < n/2; j++) {
-            if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
-
-                mzd_row_add(Glw, lambda, j);
-
                 row = mzd_row(Glw, j);
-                wt = 1 + popcnt64_unrolled(row, 10 /* 640/64 */ );
 
+#if defined(__AVX512F__) && defined(__AVX512BW__)
+            // TODO: create masks and check wheter the row match
+            // TODO: simd addition
+#else
+            if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
+                mzd_row_add(Glw, lambda, j);
+#endif
+
+                wt = 1 + popcnt64_unrolled(row, 10 /* 640/64 */ );
                 // wt = popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
 
                 if (wt < min_wt) {
+                    // TODO: dump time/iter num in stdout when finding a new low cw
                     printf("New min wt : %ld\n", wt);
                     min_wt = wt;
 

@@ -11,6 +11,10 @@
 #ifndef __XOSHIRO256starstar___
 #define __XOSHIRO256starstar___
 
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+
+
 #include <stdint.h>
 
 /* This is xoshiro256** 1.0, our all-purpose, rock-solid generator. It has

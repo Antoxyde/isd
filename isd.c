@@ -13,6 +13,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
           lambda, mu, tmp;
 
     void* row = NULL;
+    uint64_t* word = NULL;
     long int wt = 0;
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
@@ -37,10 +38,21 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     for (i = 0; i < niter; i++) {
 
+        // Find lambda, mu s.t. G[lambda, mu] == 1
+        lambda = xoshiro256starstar_random() % (n/2);
         do {
-            lambda = xoshiro256starstar_random() % (n/2);
-            mu = xoshiro256starstar_random() % (n/2);
-        } while (mzd_read_bit(Glw, lambda, mu) == 0);
+            mu = xoshiro256starstar_random() % 10;
+            word = mzd_row(Glw, lambda);
+        } while (word[mu] == 0);
+
+        word += mu;
+
+        do {
+            j  = xoshiro256starstar_random() % 64;
+            for (; j < 64 && ((*word >> j) & 1) == 0; j++);
+        } while (((*word >> j) & 1) == 0);
+
+        mu = mu*64 + j;
 
         // Log the column swapping
         tmp = column_perms[lambda];

@@ -94,20 +94,24 @@ void print_cw(mzd_t* cw) {
 
 void rref_to_systematic(mzd_t* M, rci_t* perms) {
 
-    rci_t n = M->ncols, cur;
+    rci_t n = M->ncols, cur, old;
     mzd_t* Mt = mzd_init(n, n/2);
 
     while (!left_is_identity(M)) {
 
         mzd_transpose(Mt, M);
 
-        for (cur = n/2; popcnt(mzd_row(Mt, cur), n/16) != 1; cur++);
+        // find a column with only one 1 in the right part of M
+        for (cur = n/2; cur < n && popcnt(mzd_row(Mt, cur), n/16) != 1; cur++);
 
-        mzd_col_swap(M, (n/2) - 1, cur);
+        // find a column with more than one 1 in the left part of M
+        for (old = 0; old < n/2 && popcnt(mzd_row(Mt, old), n/16) == 1; old++);
 
+        // And swap them
+        mzd_col_swap(M, old, cur);
         rci_t tmp = perms[cur];
-        perms[cur] =  perms[(n/2) - 1];
-        perms[(n/2) - 1] = tmp;
+        perms[cur] =  perms[old];
+        perms[old] = tmp;
 
         mzd_echelonize(M, 1);
     }

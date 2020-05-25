@@ -19,7 +19,7 @@ int main(void) {
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
-    if (!load_challenge("challenges/LW_1280_0", G, H)) {
+    if (!load_challenge("challenges/LW_1280_1", G, H)) {
         return 1;
     }
 

@@ -5,15 +5,14 @@
 
 mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
-    rci_t n = G->ncols, i = 0, j = 0, row_min_cw = 0;
+    rci_t n = G->ncols, i, j, row_min_cw = 0, lambda, mu, tmp;
     void* row = NULL;
     long int wt = 0;
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
-    rci_t* affected_rows = (rci_t*) malloc(sizeof(rci_t) * (n/2) );
 
-    if (!column_perms || !column_perms_copy || !affected_rows) {
+    if (!column_perms || !column_perms_copy) {
         fprintf(stderr, "Error in %s:  malloc failed.\n", __func__);
         return NULL;
     }
@@ -33,23 +32,34 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     for (i = 0; i < niter; i++) {
 
-        canteaut_next_iset(Glw, column_perms, affected_rows);
+        do {
+            lambda = rand() % (n/2);
+            mu = rand() % (n/2);
+        } while (mzd_read_bit(Glw, lambda, mu) == 0);
 
-        // Check all the rows that changed since last iset for low codewords
-        for (j = 0; affected_rows[j] >= 0; j++) {
+        tmp = column_perms[lambda];
+        column_perms[lambda] = column_perms[mu + (n/2)];
+        column_perms[mu + (n/2)] = tmp;
 
-            row = mzd_row(Glw, affected_rows[j]);
-            wt = 1 + popcnt64_unrolled(row, 10 /* 640/64 */ );
-            //wt = popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
+        for (j = 0; j < n/2; j++) {
+            if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
+                mzd_row_add(Glw, lambda, j);
+                mzd_write_bit(Glw, j, mu, 1);
 
-            if (wt < min_wt) {
-                printf("New min wt : %ld\n", wt);
-                min_wt = wt;
-                row_min_cw = affected_rows[j];
+                row = mzd_row(Glw, j);
+                wt = 1 + popcnt64_unrolled(row, 10 /* 640/64 */ );
 
-                // Save our new lowest row and all the permutations made until now
-                mzd_copy_row(min_cw, 0, Glw, affected_rows[j]);
-                memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
+                // wt = popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
+
+                if (wt < min_wt) {
+                    printf("New min wt : %ld\n", wt);
+                    min_wt = wt;
+                    row_min_cw = j;
+
+                    // Save our new lowest row and all the permutations made until now
+                    mzd_copy_row(min_cw, 0, Glw, j);
+                    memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
+                }
             }
         }
     }
@@ -75,7 +85,6 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
     mzd_free(min_cw_full);
     mzd_free(ident);
 
-    free(affected_rows);
     free(column_perms);
     free(column_perms_copy);
 

@@ -5,7 +5,10 @@
 
 mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
-    rci_t n = G->ncols, i, j, row_min_cw = 0, lambda, mu, tmp;
+    rci_t n = G->ncols, i, j,
+          row_min_cw = 0,  // retains the row from which the lowest codeword has been found
+          lambda, mu, tmp;
+
     void* row = NULL;
     long int wt = 0;
 
@@ -21,7 +24,6 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
     // init to the weight of the 1 vector
     int min_wt = n;
     mzd_t* min_cw = mzd_init(1,n/2);
-
     mzd_t* Gtemp = mzd_copy(NULL, G);
 
     // Ensure that we work with a systematic generator matrix
@@ -37,14 +39,19 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
             mu = rand() % (n/2);
         } while (mzd_read_bit(Glw, lambda, mu) == 0);
 
+        // Log the column swapping
         tmp = column_perms[lambda];
         column_perms[lambda] = column_perms[mu + (n/2)];
         column_perms[mu + (n/2)] = tmp;
 
+        // Clear the bit at the intersection of the row lambda and the column mu
+        // so we don't have to rewrite a 1 in col mu everytime we add the lambda'th row
+        mzd_write_bit(Glw, lambda, mu, 0);
+
         for (j = 0; j < n/2; j++) {
             if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
+
                 mzd_row_add(Glw, lambda, j);
-                mzd_write_bit(Glw, j, mu, 1);
 
                 row = mzd_row(Glw, j);
                 wt = 1 + popcnt64_unrolled(row, 10 /* 640/64 */ );
@@ -54,19 +61,25 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
                 if (wt < min_wt) {
                     printf("New min wt : %ld\n", wt);
                     min_wt = wt;
-                    row_min_cw = j;
 
                     // Save our new lowest row and all the permutations made until now
+                    row_min_cw = j;
                     mzd_copy_row(min_cw, 0, Glw, j);
                     memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
                 }
             }
         }
+
+        // Unclear the bit we removed earlier
+        mzd_write_bit(Glw, lambda, mu, 1);
+
     }
 
     // Since Glw contains only the redundant part of the matrix for the computation
     // we have to concat the identity part back again to get the correct codeword
     mzd_t* ident = mzd_init(1, n/2);
+
+    // row_min_cw contain the row number from which min_cw has been taken
     mzd_write_bit(ident, 0, row_min_cw, 1);
     mzd_t* min_cw_full = mzd_concat(NULL, ident, min_cw);
 

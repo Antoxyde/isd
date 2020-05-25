@@ -15,7 +15,7 @@ int main(void) {
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    int niter = 10000;
+    int niter = 100000;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 

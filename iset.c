@@ -24,7 +24,8 @@ void get_random_iset(const mzd_t* Gt, mzd_t* Gis, mzd_t* Gist, rci_t* indices) {
     mzd_transpose(Gis, Gist);
 }
 
-void canteaut_next_iset(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
+
+void canteaut_next_iset_naive(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
 
     // Canteaut improvement to derive a new iset from a previous one
 
@@ -52,7 +53,8 @@ void canteaut_next_iset(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
     affected_rows[pos] = -1;
 }
 
-void canteaut_next_iset_test(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
+
+void canteaut_next_iset(mzd_t* Glw, rci_t* perms, rci_t* affected_rows) {
 
     // Canteaut improvement to derive a new iset from a previous one
 

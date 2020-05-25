@@ -68,7 +68,6 @@ int main(void) {
     printf("iter/s: %.3f\n", ((double)niter) / ((double) time_elapsed));
     printf("Gb/s: %.3f\n\n", ((((double)niter) * 10.0)/ (1024.0*1024.0*1024.0)) / time_elapsed);
 
-
     sum = 0;
     xoshiro256starstar_random_set(seed);
     start = clock();
@@ -85,7 +84,6 @@ int main(void) {
     printf("time: %.3f\n", time_elapsed);
     printf("iter/s: %.3f\n", ((double)niter) / ((double) time_elapsed));
     printf("Gb/s: %.3f\n\n", ((((double)niter) * 10.0)/ (1024.0*1024.0*1024.0)) / time_elapsed);
-
 
     sum = 0;
     xoshiro256starstar_random_set(seed);

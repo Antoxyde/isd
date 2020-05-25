@@ -58,7 +58,8 @@ mzd_t* isd_prange(mzd_t* G, int niter) {
     return min_cw;
 }
 
-mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
+
+mzd_t* isd_prange_canteaut_naive(mzd_t* G, int niter) {
 
     rci_t n = G->ncols, i = 0, j = 0;
     void* row = NULL;
@@ -122,7 +123,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 }
 
 
-mzd_t* isd_prange_canteaut_test(mzd_t* G, int niter) {
+mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     rci_t n = G->ncols, i = 0, j = 0, row_min_cw = 0;
     void* row = NULL;
@@ -138,37 +139,22 @@ mzd_t* isd_prange_canteaut_test(mzd_t* G, int niter) {
     }
     for (i = 0; i < n; i++) column_perms[i] = i;
 
-    int min_wt = n;
+    int min_wt = n; // init to the weight of the 1 vector
     mzd_t* min_cw = mzd_init(1,n/2);
-
-
-    // As the following algorithm requires it,
-    // check that the submatrix composed of the n/2 first columns
-    // is indeed the n/2 identity matrix. if its not, the last colmun is in
-    // position n/2 instead of n/2 - 1, so we have to swap them to get our identity
-    // (that's because rref on full rank doesn't implies identity on the first columns)
 
     mzd_t* Gtemp = mzd_copy(NULL, G);
 
-    int count_one = 0;
-    for (i = 0; i < n/2; i++) {
-        count_one += mzd_read_bit(Gtemp, i, (n/2) - 1);
-    }
+    // Ensure that we work with a systematic generator matrix
+    rref_to_systematic(Gtemp, column_perms);
 
-    if (count_one > 1) {
-        mzd_col_swap(Gtemp, (n/2) - 1, n/2);
-        column_perms[n/2] = (n/2) - 1;
-        column_perms[(n/2) - 1] = n/2;
-    }
-
-    // Glw contains only the reundant part of G
+    // Glw contains only the redundant part of G
     mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, n/2, n/2, n);
-    mzd_free(Gtemp);
 
+    mzd_free(Gtemp);
 
     for (i = 0; i < niter; i++) {
 
-        canteaut_next_iset_test(Glw, column_perms, affected_rows);
+        canteaut_next_iset(Glw, column_perms, affected_rows);
 
         // Check all the rows that changed since last iset for low codewords
         for (j = 0; affected_rows[j] >= 0; j++) {
@@ -200,7 +186,6 @@ mzd_t* isd_prange_canteaut_test(mzd_t* G, int niter) {
     mzd_t* result = mzd_copy(NULL, min_cw_full);
     for (i = 0; i < n; i++) {
         if (i != column_perms_copy[i]) {
-            printf("Deswap %d <-> %d\n", i, column_perms_copy[i]);
             mzd_write_bit(result, 0, column_perms_copy[i], mzd_read_bit(min_cw_full, 0, i));
         }
     }

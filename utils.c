@@ -1,3 +1,4 @@
+#include "libpopcnt.h"
 #include "utils.h"
 
 void fisher_yates_shuffle(rci_t* values, size_t size) {
@@ -10,7 +11,6 @@ void fisher_yates_shuffle(rci_t* values, size_t size) {
         values[i] = values[j];
         values[j] = tmp;
     }
-
 }
 
 int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
@@ -70,4 +70,47 @@ int load_challenge(char* filename, mzd_t* G, mzd_t* H) {
     fclose(fp);
 
     return 1;
+}
+
+int left_is_identity(const mzd_t* M) {
+
+    rci_t n = M->nrows;
+
+    for (rci_t i = 0; i < n; i++) {
+        if (mzd_read_bit(M, i, i) != 1 || popcnt(mzd_row(M, i), n/8) > 1) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+void print_cw(mzd_t* cw) {
+    printf("cw = ");
+    for (int i = 0; i < cw->ncols; i++) printf(mzd_read_bit(cw, 0, i) ? "1" : "0");
+    printf("\n");
+}
+
+
+void rref_to_systematic(mzd_t* M, rci_t* perms) {
+
+    rci_t n = M->ncols, cur;
+    mzd_t* Mt = mzd_init(n, n/2);
+
+    while (!left_is_identity(M)) {
+
+        mzd_transpose(Mt, M);
+
+        for (cur = n/2; popcnt(mzd_row(Mt, cur), n/16) != 1; cur++);
+
+        mzd_col_swap(M, (n/2) - 1, cur);
+
+        rci_t tmp = perms[cur];
+        perms[cur] =  perms[(n/2) - 1];
+        perms[(n/2) - 1] = tmp;
+
+        mzd_echelonize(M, 1);
+    }
+
+    mzd_free(Mt);
 }

@@ -76,10 +76,9 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
         // No easy instrinsic to set a single bit to 1 ?
         memset(mask, 0, 80);
-        mask[mu/64] = ((uint64_t)1 << (64 - mu%64));
+        mask[mu/64] = ((uint64_t)1 << (mu%64));
         __m512i m1 = _mm512_loadu_si512(mask);
         __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
-
 #endif
 
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
@@ -92,10 +91,10 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
             __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);
 
             // Check whether there is a one in column mu using the mask
-            if (j != lambda && !(_mm512_test_epi64_mask(rj1, m1) == 1 || _mm_test_epi64_mask(rj2, m2) == 1))
+            if (j != lambda && !(_mm512_test_epi64_mask(rj1, m1) >= 1 || _mm_test_epi64_mask(rj2, m2) >= 1))
                 printf("Should be zero : %d\n", mzd_read_bit(Glw, j, mu));
 
-            if (j != lambda && (_mm512_test_epi64_mask(rj1, m1) == 1 || _mm_test_epi64_mask(rj2, m2) == 1)) {
+            if (j != lambda && (_mm512_test_epi64_mask(rj1, m1) >= 1 || _mm_test_epi64_mask(rj2, m2) >= 1)) {
                 printf("Should be one : %d\n", mzd_read_bit(Glw, j, mu));
 
                 // Perform row addition

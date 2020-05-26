@@ -2,7 +2,7 @@
 #define ISD_ISD_H
 
 #if defined(__AVX512DQ__) && defined(__AVX512F__) && defined(__AVX512VL__)
-#define HAVE_AVX512
+#define AVX512_ENABLED
 #endif
 
 #include <m4ri.h>

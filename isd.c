@@ -90,7 +90,10 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
             __m512i rj1 = _mm512_loadu_si512(row);
             __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);
 
-            if (_mm512_test_epi64_mask(rj1, m1) == 1 || _mm_test_epi64_mask(rj2, m2) == 1) {
+            if (j != lambda && (_mm512_test_epi64_mask(rj1, m1) == 1 || _mm_test_epi64_mask(rj2, m2) == 1)) {
+
+                printf("Devrait être 1 : %d\n", mzd_read_bit(Glw, j, mu));
+
                 _mm512_storeu_si512(row, _mm512_xor_si512(rlambda1, rj1));
                 _mm_storeu_si128(row + 64, _mm_xor_si128(rlambda2, rj2));
 #else

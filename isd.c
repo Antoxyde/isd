@@ -16,6 +16,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
 #if defined(AVX512_ENABLED)
     uint64_t mask[10];
+    memset(mask, 0, 80);
 #endif
 
     long int wt = 0;
@@ -44,7 +45,6 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         // Assuming that a whole row can't be totally 0, but that 64 bits subset of that row
-
         lambda = xoshiro256starstar_random() % (n/2);
         do {
             mu = xoshiro256starstar_random() % 10;
@@ -65,8 +65,8 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         column_perms[lambda] = column_perms[mu + (n/2)];
         column_perms[mu + (n/2)] = tmp;
 
-        // Clear the bit at the intersection of the row lambda and the column mu
-        // so we don't have to rewrite a 1 in col mu everytime we add the lambda'th row
+        // Clear the bit at the intersection of the lambda'th row and the mu'th column
+        // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row
         mzd_write_bit(Glw, lambda, mu, 0);
 
 #if defined(AVX512_ENABLED)
@@ -75,7 +75,6 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
 
         // No easy instrinsic to set a single bit to 1 ?
-        memset(mask, 0, 80);
         mask[mu/64] = ((uint64_t)1 << (mu%64));
         __m512i m1 = _mm512_loadu_si512(mask);
         __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
@@ -119,6 +118,11 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
         // Unclear the bit we removed earlier
         mzd_write_bit(Glw, lambda, mu, 1);
+
+#if defined(AVX512_ENABLED)
+        // Clear the mask for the next iteration
+        mask[mu/64] = 0;
+#endif
 
     }
 

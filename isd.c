@@ -4,8 +4,13 @@
 #include "libpopcnt.h"
 #include  "xoshiro256starstar.h"
 
+#include <time.h>
+
 
 mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
+
+    clock_t start, current;
+    start = clock();
 
     rci_t n = G->ncols, i, j,
           row_min_cw = 0,  // retains the row from which the lowest codeword has been found
@@ -104,8 +109,9 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
                 // wt = popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
 
                 if (wt < min_wt) {
-                    // TODO: dump time/iter num in stdout when finding a new low cw
-                    printf("New min wt : %ld\n", wt);
+                    current = clock();
+                    double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+                    printf("niter=%d, time=%.3f, wt=%ld\n", i, elapsed, wt);
                     min_wt = wt;
 
                     // Save our new lowest row and all the permutations made until now

@@ -2,7 +2,6 @@
 #include "isd.h"
 #include "utils.h"
 #include "libpopcnt.h"
-
 #include  "xoshiro256starstar.h"
 
 
@@ -14,6 +13,11 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     void* row = NULL;
     uint64_t* word = NULL;
+
+#if defined(HAVE_AVX512)
+    uint64_t mask[10];
+#endif
+
     long int wt = 0;
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
@@ -65,13 +69,30 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         // so we don't have to rewrite a 1 in col mu everytime we add the lambda'th row
         mzd_write_bit(Glw, lambda, mu, 0);
 
+#if defined(HAVE_AVX512)
+        void* row_lambda = mzd_row(Glw, lambda);
+        __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
+        __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
+
+        // No easy instrinsic to set a single bit to 1 ?
+        memset(mask, 0, 80);
+        mask[mu/64] = ((uint64_t)1 << (mu%64));
+        __m512i m1 = _mm512_loadu_si512(mask);
+        __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
+
+#endif
+
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
         for (j = 0; j < n/2; j++) {
                 row = mzd_row(Glw, j);
 
-#if defined(__AVX512F__) && defined(__AVX512BW__)
-            // TODO: create masks and check wheter the row match
-            // TODO: simd addition
+#if defined(HAVE_AVX512)
+            __m512i rj1 = _mm512_loadu_si512(row);
+            __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);
+
+            if (_mm512_test_epi64_mask(rj1, m1) == 1 || _mm_test_epi64_mask(rj2, m2) == 1) {
+                _mm512_storeu_si512(row, _mm512_xor_si512(rlambda1, rj1));
+                _mm_storeu_si128(row + 64, _mm_xor_si128(rlambda2, rj2));
 #else
             if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
                 mzd_row_add(Glw, lambda, j);

@@ -7,7 +7,7 @@
 #include <time.h>
 
 
-mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
+mzd_t* isd_prange_canteaut(mzd_t* G, uint64_t niter) {
 
     clock_t start, current;
     start = clock();
@@ -18,6 +18,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
     void* row = NULL;
     uint64_t* word = NULL;
+    uint64_t iter;
 
 #if defined(AVX512_ENABLED)
     uint64_t mask[10];
@@ -46,7 +47,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
     // Glw contains only the redundant part of G
     mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, n/2, n/2, n);
 
-    for (i = 0; i < niter; i++) {
+    for (iter = 0; iter < niter; iter++) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         // Assuming that a whole row can't be totally 0, but that 64 bits subset of that row
@@ -114,7 +115,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
                 if (wt < min_wt) {
                     current = clock();
                     double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
-                    printf("niter=%d, time=%.3f, wt=%ld\n", i, elapsed, wt);
+                    printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt);
                     min_wt = wt;
 
                     // Save our new lowest row and all the permutations made until now

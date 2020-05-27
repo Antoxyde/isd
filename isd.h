@@ -6,13 +6,14 @@
 #endif
 
 #include <m4ri.h>
+#include <stdint.h>
 
 // Input:
 //  - G, a n/2 x n generator matrix
 //  - niter, the number of iteration to make
 //  Output:
 //  - min_cw, the lowest codeword found
-mzd_t* isd_prange_canteaut(mzd_t* G, int niter);
+mzd_t* isd_prange_canteaut(mzd_t* G, uint64_t niter);
 
 
 #endif

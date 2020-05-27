@@ -53,7 +53,8 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         lambda = xoshiro256starstar_random() % (n/2);
         do {
             mu = xoshiro256starstar_random() % 10;
-            word = mzd_row(Glw, lambda);
+            //word = mzd_row(Glw, lambda);
+            word = Glw->rows[lambda];
         } while (word[mu] == 0);
 
         word += mu;
@@ -63,7 +64,7 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
             for (; j < 64 && ((*word >> j) & 1) == 0; j++);
         } while (((*word >> j) & 1) == 0);
 
-        mu = mu*64 + j;
+        mu = mu * 64 + j;
 
         // Log the column swapping
         tmp = column_perms[lambda];
@@ -75,7 +76,8 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
         mzd_write_bit(Glw, lambda, mu, 0);
 
 #if defined(AVX512_ENABLED)
-        void* row_lambda = mzd_row(Glw, lambda);
+        //void* row_lambda = mzd_row(Glw, lambda);
+        void* row_lambda = Glw->rows[lambda];
         __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
 
@@ -87,7 +89,8 @@ mzd_t* isd_prange_canteaut(mzd_t* G, int niter) {
 
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
         for (j = 0; j < n/2; j++) {
-            row = mzd_row(Glw, j);
+            //row = mzd_row(Glw, j);
+            row = Glw->rows[j];
 
 #if defined(AVX512_ENABLED)
             // Load the whole row

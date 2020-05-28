@@ -1,6 +1,6 @@
 #include "utils.h"
 #include "libpopcnt.h"
-#include "isd.h"
+#include "prange.h"
 #include "xoshiro256starstar.h"
 
 #include <stdint.h>
@@ -11,12 +11,12 @@
 
 int main(void) {
 
-    uint64_t seed[4] = {1,2,3,4};
+    //uint64_t seed[4] = {1,2,3,4};
     clock_t start, stop;
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    uint64_t niter = 1000000;
+    uint64_t niter = 10000000;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
@@ -24,10 +24,10 @@ int main(void) {
         return 1;
     }
 
-    xoshiro256starstar_random_set(seed);
+    //xoshiro256starstar_random_set(seed);
 
     start = clock();
-    mzd_t* min_cw = isd_prange_canteaut(G, niter);
+    mzd_t* min_cw = isd_prange_canteaut_chabaud(G, niter);
 
     if (!min_cw) {
         printf("failed, leaving.\n");
@@ -45,7 +45,7 @@ int main(void) {
     printf("Total time: %.3f\n", time_elapsed);
     printf("Iter/s : %.3f\n", ((double)niter)/time_elapsed);
 
-    mzd_print(min_cw);
+    print_cw(min_cw);
     mzd_free(min_cw);
     mzd_free(G);
     mzd_free(H);

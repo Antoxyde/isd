@@ -9,9 +9,9 @@ all: $(EXECUTABLES)
 %.o : %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
-main.o: main.c isd.h utils.h libpopcnt.h xoshiro256starstar.h
-isd.o: isd.c isd.h utils.h libpopcnt.h iset.h xoshiro256starstar.h
-main: utils.o main.o isd.o libm4ri-0.0.20200125.so iset.o
+main.o: main.c prange.h utils.h libpopcnt.h xoshiro256starstar.h
+prange.o: prange.c prange.h utils.h libpopcnt.h xoshiro256starstar.h
+main: utils.o main.o prange.o libm4ri-0.0.20200125.so
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:

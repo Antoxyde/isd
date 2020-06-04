@@ -2,18 +2,15 @@
 #include "hashtable.h"
 #include "utils.h"
 
-mzd_t* isd_stern_canteaut_chabaud(mzd_t* G, uint64_t niter) {
+mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
-    // Assuming p=2 and sigma=18
-    uint64_t sigma = 18;
     uint64_t p = 2;
-    rci_t n = G->ncols, comb1[p], comb2[p];
+    rci_t n = G->ncols, comb1[2], comb2[2];
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
     CHECK_MALLOC(colmun_perms);
     CHECK_MALLOC(column_perms_copy);
-
     for (i = 0; i < n; i++) column_perms[i] = i;
 
     mzd_t* Gtemp = mzd_copy(NULL, G);
@@ -21,7 +18,6 @@ mzd_t* isd_stern_canteaut_chabaud(mzd_t* G, uint64_t niter) {
     // Ensure that we work with a systematic generator matrix
     rref_to_systematic(Gtemp, column_perms);
     mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, n/2, n/2, n);
-
 
     // We store v=(a,b,c),k=(Z[a]+Z[b]+Z[c])
     hashtable* ht = hashtable_init(1 << sigma, 1);
@@ -40,11 +36,14 @@ mzd_t* isd_stern_canteaut_chabaud(mzd_t* G, uint64_t niter) {
     for (comb2[0] = n/4; comb2[0]  < n/2; comb2[0]++) {
         for (comb2[1] = n/4; comb2[1] < n/2; comb2[1]++) {
             if (comb2[0] != comb2[1]) {
+
                 delta2 = mxor(mzd_row(Glw, comb2[0]), mzd_row(Glw, comb2[1]), sigma);
                 elem* ret = hashtable_retrieve(ht, &delta2, 8);
 
                 if (ret) {
                     // TODO recreate the codeword from ret->data (=comb1) and comb2
+                    // comb1 = (rci_t*)ret->data;
+                    wt = 2*p +
                 }
             }
         }

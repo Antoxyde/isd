@@ -3,11 +3,13 @@
 
 #include <m4ri.h>
 
-#define CHECK_MALLOC(X) if ((X) == NULL) {\
-	fprintf(stderr, "Malloc failed at line %d in func %s\n", __LINE__, __func__);\
-	exit(1);\
-}
-
+#define CHECK_MALLOC(X)  \
+    do { \
+        if ((X) == NULL) {\
+	        fprintf(stderr, "Malloc failed at line %d in func %s\n", __LINE__, __func__);\
+	        exit(1);\
+        } \
+    } while (0)
 
 
 // Shuffle the size first entries of the values array

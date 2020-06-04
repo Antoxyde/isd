@@ -1,0 +1,20 @@
+niter=0, time=0.000, wt=314
+niter=0, time=0.000, wt=310
+niter=0, time=0.000, wt=289
+niter=0, time=0.000, wt=287
+niter=1, time=0.000, wt=283
+niter=3, time=0.000, wt=279
+niter=25, time=0.001, wt=277
+niter=36, time=0.001, wt=274
+niter=72, time=0.001, wt=271
+niter=239, time=0.002, wt=264
+niter=681, time=0.004, wt=260
+niter=5958, time=0.034, wt=254
+niter=99491, time=0.566, wt=247
+niter=1454239, time=8.272, wt=246
+niter=2919417, time=16.609, wt=243
+niter=4884019, time=27.793, wt=240
+niter=27925784, time=158.877, wt=239
+niter=177374929, time=1009.023, wt=233
+niter=1238043141, time=7043.042, wt=232
+

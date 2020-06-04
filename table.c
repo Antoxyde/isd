@@ -1,5 +1,4 @@
-#include "hashtable.h"
-#include "op339.h"
+#include "table.h"
 #include "utils.h"
 
 #include <stdlib.h>
@@ -7,27 +6,20 @@
 #include <string.h>
 
 
-hashtable* hashtable_init(const size_t tablen, const size_t base_bucketlen) {
+table* table_init(const size_t nb_buckets, const size_t base_bucketlen) {
 
-	hashtable* ht = (hashtable*)malloc(sizeof(hashtable));
-	ht->base_bucketlen = base_bucketlen;
-	ht->tablen = tablen;
+	table* t = (table*)malloc(sizeof(table));
+	t->base_bucketlen = base_bucketlen;
+	t->nb_buckets = nb_buckets;
+	t->buckets = (bucket**)calloc(nb_buckets , sizeof(bucket*));
 
-	do {
-		ht->k = rand();
-	} while (ht->k == 0 || ht->k == 1);
-
-	ht->table = (bucket**)calloc(tablen , sizeof(bucket*)); // Calloc donc tout les pointeurs sont init a NULL
-
-	return ht;
+	return t;
 }
 
 void bucket_free(bucket* b) {
-
 	if (b) {
 		free(b);
 	}
-
 }
 
 void bucket_free_full(bucket* b) {
@@ -48,51 +40,35 @@ void bucket_free_full(bucket* b) {
 	}
 }
 
-void hashtable_free(hashtable* ht) {
-
-	if (ht) {
-		free(ht);
+void table_free(table* t) {
+	if (t) {
+		free(t);
 	}
 }
 
-void hashtable_free_full(hashtable* ht) {
+void table_free_full(table* t) {
 	size_t i;
-
 	if (ht) {
 
-		for (i = 0; i < ht->tablen; i++) {
+		for (i = 0; i < t->nb_buckets; i++) {
 			if (ht->table[i]) {
 				bucket_free_full(ht->table[i]);
 			}
 		}
-		free(ht->table);
-		free(ht);
-
+		free(t->buckets);
+		free(t);
 	}
 }
 
-void hashtable_insert(hashtable* ht, const void* data, const size_t datalen, const void* key, const size_t keylen) {
-
-	// Ajoute l'élement ayant pour data `data` dans le bucket correspondant a la clé `key`.
-	// Si l'élement est déjà présent, ne fait rien.
-
-	// 2 cas :
-	// 	- Aucun élement ayant le même hash n'a déja été inséré, on crée le bucket
-	// 	- Au moins un élément est dans le bucket, on vérifie si aucun élément n'as la même clé avant d'insérer
-	//	Si l'élement n'est pas déjà présent, 2 cas :
-	// 		- Le nombre d'élement est entre un et base_bucketlen - 1 éléments : on a juste a inséré l'élement
-	// 		- Il y a déjà base_bucketlen élement dans le bucket, on doit alloué plus de place.
-
-    size_t i;
-	uint64_t hashkey = hash339(ht->k, key, keylen);
+void table_insert(table* ht, const void* data, const size_t datalen, const uint64_t key) {
 
 	// Récupération du bucket correspondant
-	bucket* b = ht->table[hashkey %  ht->tablen];
+	bucket* b = h->buckets[key];
 
 	// Vérifie que l'élement n'est pas déja dans le bucket
 	if (b != NULL) {
 		for (i = 0; i < b->len; i++) {
-			if (b->elems[i] && b->elems[i]->hash_key == hashkey) {
+			if (b->elems[i]) {
 				return;
 			}
 		}
@@ -100,17 +76,11 @@ void hashtable_insert(hashtable* ht, const void* data, const size_t datalen, con
 
 	// Il n'y est pas, on le crée
 	elem* e = (elem*) malloc(sizeof(elem));
-	e->hash_key = hashkey;
 
 	e->data = malloc(datalen);
 	CHECK_MALLOC(e->data);
 	memcpy(e->data, data, datalen);
 	e->datalen = datalen;
-
-	e->key = malloc(keylen);
-	CHECK_MALLOC(e->key);
-	memcpy(e->key, key, keylen);
-	e->keylen = keylen;
 
 	if (b == NULL) {
 
@@ -167,14 +137,10 @@ void hashtable_insert(hashtable* ht, const void* data, const size_t datalen, con
 
 }
 
-void hashtable_print(const hashtable* ht) {
-
-	// Affiche tout les buckets de la hashtable `ht`.
-
-	size_t i;
-
-	if (ht) {
-		printf("[PrintHashtable] Buckets non nuls : \n");
+void table_print(const table* t) {
+	uint64_t i;
+	if (t) {
+		printf("[PrintTable] Buckets : \n");
 		for (i = 0; i < ht->tablen; i++) {
 			if (ht->table[i]) {
 				printf("Bucket [%ld] => {\n", i);
@@ -201,22 +167,15 @@ void bucket_print(const bucket* b) {
 	}
 }
 
-elem* hashtable_retrieve(const hashtable* ht, const void* key, const size_t keylen) {
+elem* table_retrieve(const table* t, const uint64_t key);
 
-	// Si un élement de `ht` possède la clé `key`, le retourne.
-	// Sinon, renvoie NULL.
-
-	// Récupération de la hashkey liée à la clé `key`
-	uint64_t hashkey = hash339(ht->k, key, keylen);
-
-	// Récupération du bucket associé
-	bucket* b = ht->table[hashkey % ht->tablen];
+	bucket* b = t->table[key % t->tablen];
 
 	if (b) { // Si le bucket est non-vide
 		size_t i;
 
 		for (i = 0; i < b->len; i++) { // On regarde chaque élement
-			if (b->elems[i] && b->elems[i]->hash_key == hashkey) {
+			if (b->elems[i] && b->elems[i]->key == key) {
 				return b->elems[i];
 			}
 		}
@@ -226,13 +185,12 @@ elem* hashtable_retrieve(const hashtable* ht, const void* key, const size_t keyl
 
 }
 
-int hashtable_delete(hashtable* ht, const void* key, const size_t keylen) {
+int table_delete(table* t, const uint64_t key) {
 
 	// Si un élement de `ht` à la clé `key`, le supprime de la hashtable `ht` (free + mise a NULL du pointeur) et renvoie 0
 	// Sinon, ne fait rien et renvoie 1.
 
-	uint64_t hashkey = hash339(ht->k, key, keylen);
-	bucket* b = ht->table[hashkey % ht->tablen];
+	bucket* b = ht->table[key];
 
 	if (b) {
 		size_t i;

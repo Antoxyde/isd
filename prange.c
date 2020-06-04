@@ -29,11 +29,8 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
-
-    if (!column_perms || !column_perms_copy) {
-        fprintf(stderr, "Error in %s:  malloc failed.\n", __func__);
-        return NULL;
-    }
+    CHECK_MALLOC(column_perms)
+    CHECK_MALLOC(column_perms_copy)
     for (i = 0; i < n; i++) column_perms[i] = i;
 
     // init to the weight of the 1 vector
@@ -116,6 +113,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
                     current = clock();
                     double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
                     printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt);
+                    fflush(stdout);
                     min_wt = wt;
 
                     // Save our new lowest row and all the permutations made until now

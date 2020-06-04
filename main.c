@@ -27,6 +27,7 @@ int main(void) {
     //xoshiro256starstar_random_set(seed);
 
     start = clock();
+
     mzd_t* min_cw = isd_prange_canteaut_chabaud(G, niter);
 
     if (!min_cw) {

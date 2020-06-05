@@ -25,7 +25,6 @@ void table_free_full(table* t);
 
 void table_insert(table* t, const void* data, const size_t datalen, const uint64_t key);
 elem* table_retrieve(const table* ht, const uint64_t key);
-int table_delete(table* t, const uint64_t key);
 
 void table_print(const table* t);
 void bucket_print(const bucket* b);

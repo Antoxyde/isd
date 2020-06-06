@@ -27,6 +27,9 @@ table* table_init(const size_t tablen, const size_t base_buckletlen);
 void bucket_free(bucket* b);
 void bucket_free_full(bucket* b);
 
+// Free all the table elements and reset all bucket to NULL
+void table_reset(table* t) {
+
 void table_free(table* t);
 void table_free_full(table* t);
 

@@ -36,6 +36,18 @@ void bucket_free_full(bucket* b) {
 	}
 }
 
+void table_reset(table* t) {
+	size_t i;
+	if (t) {
+		for (i = 0; i < t->nb_buckets; i++) {
+			if (t->buckets[i]) {
+				bucket_free_full(t->buckets[i]);
+                t->buckets[i] = NULL;
+			}
+		}
+	}
+}
+
 void table_free(table* t) {
 	if (t) {
 		free(t);

@@ -124,3 +124,7 @@ void mxor(uint8_t* dst, uint8_t* src, size_t size) {
         dst[i] ^= src[i];
 }
 
+uint64_t uxor(uint64_t*a, uint64_t*b , size_t nbits) {
+    return (a[0] >> (64 - nbits)) ^ (b[0] >> (64 - nbits));
+}
+

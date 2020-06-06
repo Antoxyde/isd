@@ -2,7 +2,6 @@ import glob
 import matplotlib.pyplot as plt
 import re
 
-
 REG = re.compile('niter=(\d+), time=(\d+).(\d+), wt=(\d{3})')
 
 def load_run(runfile):

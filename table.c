@@ -1,6 +1,5 @@
 #include "table.h"
 #include "utils.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +27,6 @@ void bucket_free_full(bucket* b) {
 		for (i = 0; i < b->count; i++) {
 			if (b->elems[i]) {
 				free(b->elems[i]->data);
-				free(b->elems[i]->key);
 				free(b->elems[i]);
 			}
 		}
@@ -46,11 +44,11 @@ void table_free(table* t) {
 
 void table_free_full(table* t) {
 	size_t i;
-	if (ht) {
+	if (t) {
 
 		for (i = 0; i < t->nb_buckets; i++) {
-			if (ht->table[i]) {
-				bucket_free_full(ht->table[i]);
+			if (t->buckets[i]) {
+				bucket_free_full(t->buckets[i]);
 			}
 		}
 		free(t->buckets);
@@ -58,15 +56,17 @@ void table_free_full(table* t) {
 	}
 }
 
-void table_insert(table* ht, const void* data, const size_t datalen, const uint64_t key) {
+void table_insert(table* t, const int* data, const size_t datalen, const uint64_t key) {
 
-	bucket* b = h->buckets[key];
+    size_t i;
+	bucket* b = t->buckets[key % t->nb_buckets];
 	elem* e = (elem*) malloc(sizeof(elem));
 
 	e->data = malloc(datalen);
 	CHECK_MALLOC(e->data);
-	memcpy(e->data, data, datalen);
+	memcpy(e->data, data, datalen * sizeof(int));
 	e->datalen = datalen;
+    e->key = key;
 
 	if (b == NULL) {
 
@@ -77,10 +77,11 @@ void table_insert(table* ht, const void* data, const size_t datalen, const uint6
 		b->count = 1;
 		b->elems = (elem**)calloc(t->base_bucketlen, sizeof(elem*));
 		CHECK_MALLOC(b->elems);
-
-		ht->table[key % t->tablen] = b;
-
 		b->elems[0] = e;
+
+		t->buckets[key % t->nb_buckets] = b;
+        printf("Now t->buckeys[%lu] = %p\n", key % t->nb_buckets, b);
+
 
 	} else {
 
@@ -96,7 +97,7 @@ void table_insert(table* ht, const void* data, const size_t datalen, const uint6
 			// No more place in the bucket, we have ro realloc
 			i = b->len;
 
-			b->len += ht->base_bucketlen;
+			b->len += t->base_bucketlen;
 
 			b->elems = (elem**)realloc(b->elems, b->len * sizeof(elem*));
 			CHECK_MALLOC(b->elems);
@@ -107,20 +108,19 @@ void table_insert(table* ht, const void* data, const size_t datalen, const uint6
 
 			b->elems[b->count] = e;
 			b->count++;
-
 		}
 	}
-
 }
+
 
 void table_print(const table* t) {
 	uint64_t i;
 	if (t) {
 		printf("[PrintTable] Buckets : \n");
-		for (i = 0; i < ht->tablen; i++) {
-			if (ht->table[i]) {
+		for (i = 0; i < t->nb_buckets; i++) {
+			if (t->buckets[i]) {
 				printf("Bucket [%ld] => {\n", i);
-				bucket_print(ht->table[i]);
+				bucket_print(t->buckets[i]);
 				printf("}\n");
 			}
 		}
@@ -128,36 +128,32 @@ void table_print(const table* t) {
 }
 
 void bucket_print(const bucket* b) {
-
-	// Affiche chaque élement non nul du bucket `b`.
-
 	size_t i;
-
 	if (b) {
-
 		for (i = 0; i < b->len; i++) {
 			if (b->elems[i]) {
-				printf("\t[%ld] => %lu\n", i, b->elems[i]->hash_key);
+				printf("bucket @%p[%ld] => k=%lu\n", b, i, b->elems[i]->key);
 			}
 		}
 	}
 }
 
-elem* table_retrieve(const table* t, const uint64_t key);
-
-	bucket* b = t->table[key % t->tablen];
-
-	if (b) { // Si le bucket est non-vide
-		size_t i;
-
-		for (i = 0; i < b->len; i++) { // On regarde chaque élement
-			if (b->elems[i] && b->elems[i]->key == key) {
-				return b->elems[i];
-			}
-		}
-	}
-
-	return NULL;
-
+bucket* table_retrieve_bucket(const table* t, const uint64_t key) {
+	bucket* b = t->buckets[key % t->nb_buckets];
+    return b;
 }
+
+int main(void) {
+
+    table* t = table_init(262144, 1);
+
+    for (uint64_t i = 0; i < 20; i++) {
+        table_insert(t, (int*)&i, 1, i % 10);
+    }
+
+    for (uint64_t i = 0; i < 10; i++)
+        bucket_print(table_retrieve_bucket(t, i));
+}
+
+
 

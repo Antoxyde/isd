@@ -3,8 +3,7 @@
 
 #include <m4ri.h>
 
-#define CHECK_MALLOC(X)  \
-    do { \
+#define CHECK_MALLOC(X) do { \
         if ((X) == NULL) {\
 	        fprintf(stderr, "Malloc failed at line %d in func %s\n", __LINE__, __func__);\
 	        exit(1);\
@@ -27,6 +26,10 @@ int left_is_identity(const mzd_t* M);
 void print_cw(mzd_t* cw);
 
 void rref_to_systematic(mzd_t* M, rci_t* perms);
+
+
+// Compute dst[i] ^= src[i] for i in 0..size
+void mxor(uint8_t* dst, uint8_t* src, size_t size);
 
 #endif
 

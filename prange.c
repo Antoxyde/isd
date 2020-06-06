@@ -29,8 +29,8 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
 
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
-    CHECK_MALLOC(column_perms)
-    CHECK_MALLOC(column_perms_copy)
+    CHECK_MALLOC(column_perms);
+    CHECK_MALLOC(column_perms_copy);
     for (i = 0; i < n; i++) column_perms[i] = i;
 
     // init to the weight of the 1 vector

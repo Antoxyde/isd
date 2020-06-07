@@ -73,7 +73,7 @@ void table_insert(table* t, const int* data, const size_t datalen, const uint64_
 	bucket* b = t->buckets[key % t->nb_buckets];
 	elem* e = (elem*) malloc(sizeof(elem));
 
-	e->data = malloc(datalen);
+	e->data = malloc(datalen * sizeof(int));
 	CHECK_MALLOC(e->data);
 	memcpy(e->data, data, datalen * sizeof(int));
 	e->datalen = datalen;

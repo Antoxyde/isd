@@ -119,7 +119,7 @@ void rref_to_systematic(mzd_t* M, rci_t* perms) {
     mzd_free(Mt);
 }
 
-void mxor(uint8_t* dst, uint8_t* src, size_t size) {
+void mxor(uint64_t* dst, uint64_t* src, size_t size) {
     for (size_t i = 0; i < size; i++)
         dst[i] ^= src[i];
 }

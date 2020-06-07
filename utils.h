@@ -29,7 +29,7 @@ void rref_to_systematic(mzd_t* M, rci_t* perms);
 
 
 // Compute dst[i] ^= src[i] for i in 0..size
-void mxor(uint8_t* dst, uint8_t* src, size_t size);
+void mxor(uint64_t* dst, uint64_t* src, size_t size);
 
 // Compute a^b but only on the hightest nbits, and cast the result in uint64
 uint64_t uxor(uint64_t*a, uint64_t*b , size_t nbits);

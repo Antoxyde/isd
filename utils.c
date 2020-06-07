@@ -128,3 +128,13 @@ uint64_t uxor(uint64_t*a, uint64_t*b , size_t nbits) {
     return (a[0] >> (64 - nbits)) ^ (b[0] >> (64 - nbits));
 }
 
+void printbin(uint64_t* a, size_t nbits) {
+
+    for (size_t i = 0; i < nbits; i++) {
+        printf("%ld", (a[i/64] >> ( 63 - (i%64))) & 1);
+    }
+
+    printf("\n");
+}
+
+

@@ -1,12 +1,27 @@
 #include "stern.h"
 #include "table.h"
 #include "utils.h"
+#include "xoshiro256starstar.h"
+#include "libpopcnt.h"
+#include <time.h>
 
 mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
-    uint64_t p = 2;
-    rci_t n = G->ncols, comb1[2], comb2[2], lambda, mu, tmp;
 
+
+    clock_t start, current;
+    start = clock();
+
+    uint64_t p = 2, iter;
+    rci_t n = G->ncols, comb1[2], comb2[2], min_comb[4],lambda, mu, tmp, i, j;
+    rci_t* comb3;
+
+    int min_wt = n;
+
+    void* row = NULL;
+    (void)row; // otherwise gcc is :-(
+
+    uint64_t* word = NULL;
     uint64_t* linear_comb = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     uint64_t* min_cw = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
@@ -72,8 +87,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
         for (j = 0; j < n/2; j++) {
-            //row = mzd_row(Glw, j);
-            row = Glw->rows[j];
+            row = mzd_row(Glw, j);
+            //row = Glw->rows[j];
 
 #if defined(AVX512_ENABLED)
             // Load the whole row
@@ -104,13 +119,12 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
         // Here we have a new iset, we can start a Stern iteration
 
         uint64_t delta1, delta2;
-        int min_wt = n;
 
         for (comb1[0] = 0; comb1[0]  < n/4; comb1[0]++) {
             for (comb1[1] = 0; comb1[1] < n/4; comb1[1]++) {
                 if (comb1[0] != comb1[1]) {
-                    delta1 = mxor(mzd_row(Glw, comb1[0]), mzd_row(Glw, comb1[1]), sigma);
-                    table_insert(tab, &comb1, p, delta1);
+                    delta1 = uxor(mzd_row(Glw, comb1[0]), mzd_row(Glw, comb1[1]), sigma);
+                    table_insert(tab, comb1, p, delta1);
                 }
             }
         }
@@ -123,7 +137,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
                     delta2 = uxor(mzd_row(Glw, comb2[0]), mzd_row(Glw, comb2[1]), sigma);
 
                     // And check if some elements from the previous set already had this key
-                    bucket* buck = table_retrieve_bucket(ht, delta2);
+                    bucket* buck = table_retrieve_bucket(tab, delta2);
 
                     if (buck) {
                         for (i = 0; i < buck->len; i++) {
@@ -133,18 +147,27 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 #if defined(AVX512_ENABLED)
                                 // TODO cl av512
 #else
-                                comb1 = (rci_t*)(buck->elems[i]->data);
-                                mxor(linear_comb,linear_comb, 80);
-                                mxor(linear_comb,mzd_row(Glw, comb1[0]), 80);
-                                mxor(linear_comb, mzd_row(Glw, comb1[1]), 80);
-                                mxor(linear_comb, mzd_row(Glw, comb2[0]), 80);
-                                mxor(linear_comb, mzd_row(Glw, comb2[1]), 80);
+
+                                comb3 = (rci_t*)(buck->elems[i]->data);
+                                mxor((uint8_t*)linear_comb,(uint8_t*)linear_comb, 80);
+                                mxor((uint8_t*)linear_comb, (uint8_t*)mzd_row(Glw, comb3[0]), 80);
+                                mxor((uint8_t*)linear_comb, (uint8_t*)mzd_row(Glw, comb3[1]), 80);
+                                mxor((uint8_t*)linear_comb, (uint8_t*)mzd_row(Glw, comb2[0]), 80);
+                                mxor((uint8_t*)linear_comb, (uint8_t*)mzd_row(Glw, comb2[1]), 80);
 #endif
-                                // TODO DBG : check linear_comb[:sigma] est bien a zéro
-                                int wt = 2*p + popcnt(linear_comb, 10);
+                                //printf("DBG Linear comb is : \n");
+                                //printbin(linear_comb, 640);
+
+                                int wt = 2*p + popcnt64_unrolled(linear_comb, 10);
 
                                 if (wt < min_wt) {
+
                                     // Save the new min weight and the indexes of th e linear combination to obtain it
+                                    current = clock();
+                                    double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+                                    printf("niter=%lu, time=%.3f, wt=%d\n", iter, elapsed, wt);
+                                    fflush(stdout);
+
                                     min_wt = wt;
                                     memcpy(min_comb, comb1, p * sizeof(rci_t));
                                     memcpy(min_comb + p, comb2, p * sizeof(rci_t));

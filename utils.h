@@ -34,6 +34,8 @@ void mxor(uint8_t* dst, uint8_t* src, size_t size);
 // Compute a^b but only on the hightest nbits, and cast the result in uint64
 uint64_t uxor(uint64_t*a, uint64_t*b , size_t nbits);
 
+void printbin(uint64_t* a, size_t nbits);
+
 #endif
 
 

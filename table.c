@@ -91,7 +91,6 @@ void table_insert(table* t, const int* data, const size_t datalen, const uint64_
 		b->elems[0] = e;
 
 		t->buckets[key % t->nb_buckets] = b;
-        printf("Now t->buckeys[%lu] = %p\n", key % t->nb_buckets, b);
 
 
 	} else {

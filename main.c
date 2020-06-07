@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "libpopcnt.h"
 #include "prange.h"
+#include "stern.h"
 #include "xoshiro256starstar.h"
 
 #include <stdint.h>
@@ -16,7 +17,7 @@ int main(void) {
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    uint64_t niter = 10000000;
+    uint64_t niter = 100;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
@@ -28,12 +29,13 @@ int main(void) {
 
     start = clock();
 
-    mzd_t* min_cw = isd_prange_canteaut_chabaud(G, niter);
+    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2(G, niter, 18);
 
     if (!min_cw) {
         printf("failed, leaving.\n");
         return 0;
     }
+
 
     stop = clock();
     time_elapsed = ((double)(stop - start))/CLOCKS_PER_SEC;

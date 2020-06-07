@@ -110,6 +110,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
                 // wt = popcnt(row + (n/16) /* n/2 bits, so n/16 bytes */ , n/16 + (n % 8 != 0) );
 
                 if (wt < min_wt) {
+
                     current = clock();
                     double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
                     printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt);

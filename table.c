@@ -1,9 +1,8 @@
-#include "table.h"
-#include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "table.h"
 
 table* table_init(const size_t nb_buckets, const size_t base_bucketlen) {
 
@@ -155,6 +154,7 @@ bucket* table_retrieve_bucket(const table* t, const uint64_t key) {
     return b;
 }
 
+/*
 int main(void) {
 
     table* t = table_init(262144, 1);
@@ -169,3 +169,4 @@ int main(void) {
 
 
 
+*/

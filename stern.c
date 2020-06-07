@@ -5,13 +5,13 @@
 mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
     uint64_t p = 2;
-    rci_t n = G->ncols, comb1[2], comb2[2];
+    rci_t n = G->ncols, comb1[2], comb2[2], lambda, mu, tmp;
 
     uint64_t* linear_comb = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     uint64_t* min_cw = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
-    CHECK_MALLOC(colmun_perms);
+    CHECK_MALLOC(column_perms);
     CHECK_MALLOC(column_perms_copy);
     CHECK_MALLOC(linear_comb);
     CHECK_MALLOC(min_cw);
@@ -147,7 +147,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
                                     // Save the new min weight and the indexes of th e linear combination to obtain it
                                     min_wt = wt;
                                     memcpy(min_comb, comb1, p * sizeof(rci_t));
-                                    mempcy(min_comb + p, comb2, p * sizeof(rci_t));
+                                    memcpy(min_comb + p, comb2, p * sizeof(rci_t));
                                     memcpy(min_cw, linear_comb, 80);
                                     memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
                                 }
@@ -160,7 +160,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
 
         // Reset the table for the next iteration
-        table_reset(t);
+        table_reset(tab);
 
     }
 

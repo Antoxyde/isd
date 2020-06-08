@@ -17,7 +17,7 @@ int main(void) {
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    uint64_t niter = 1;
+    uint64_t niter = 1000;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
@@ -30,6 +30,8 @@ int main(void) {
     start = clock();
 
     mzd_t* min_cw = isd_stern_canteaut_chabaud_p2(G, niter, 18);
+    //mzd_t* min_cw = isd_prange_canteaut_chabaud(G, niter);
+
 
     if (!min_cw) {
         printf("failed, leaving.\n");

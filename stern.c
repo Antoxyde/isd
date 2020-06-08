@@ -10,7 +10,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
     clock_t start, current;
     start = clock();
 
-    uint64_t p = 2, iter;
+    uint64_t p = 2, iter, nb_collision = 0;
     rci_t n = G->ncols, comb1[2], comb2[2], min_comb[4],lambda, mu, tmp, i, j;
     rci_t* comb3;
 
@@ -138,7 +138,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
             for (comb2[1] = n/4; comb2[1] < n/2; comb2[1]++) {
                 if (comb2[0] != comb2[1]) {
 
-                    // Compute the key of the linear combination
+                    // Compute the "key" of the linear combination
                     delta2 = uxor(mzd_row(Glw, comb2[0]), mzd_row(Glw, comb2[1]), sigma);
 
                     // And check if some elements from the previous set already had this key
@@ -148,10 +148,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
                         for (i = 0; i < buck->len; i++) {
                             // For each element that had the same key, we have a collision
                             if (buck->elems[i]->key == delta2) {
+                                nb_collision++;
 
                                 comb3 = (rci_t*)(buck->elems[i]->data); // get back the indexes of the first linear comb
 #if defined(AVX512_ENABLED)
-
                                 void* row1 = mzd_row(Glw, comb3[0]);
                                 void* row2 = mzd_row(Glw, comb3[1]);
                                 void* row3 = mzd_row(Glw, comb2[0]);
@@ -212,6 +212,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
     }
 
+    // Reconstruct the codeword by concatenating the identity and unpermuting the columns
     mzd_t* ident = mzd_init(1, n/2);
     for (int i = 0; i < 2*p; i++)
         mzd_write_bit(ident, 0, min_comb[i], 1);
@@ -227,6 +228,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
             mzd_write_bit(result, 0, column_perms_copy[i], mzd_read_bit(min_cw_full, 0, i));
         }
     }
+
+    printf("nb_collision/iset : %.3f\n", (double)nb_collision/(double)niter);
 
 
     table_free_full(tab);

@@ -45,7 +45,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma) {
     mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, n/2, n/2, n);
 
     // We store v=(a,b,c),k=(Z[a]+Z[b]+Z[c])[:sigma]
-    table* tab = table_init(1 << sigma, 4);
+    table* tab = table_init(1 << sigma, 1);
 
     for (iter = 0; iter < niter; iter++) {
 
@@ -381,14 +381,14 @@ mzd_t* isd_stern_canteaut_chabaud_p3(mzd_t* G, uint64_t niter, uint64_t sigma) {
         for (comb1[0] = 0; comb1[0]  < n/4; comb1[0]++) {
             for (comb1[1] = 0; comb1[1] < n/4; comb1[1]++) {
                 if (comb1[0] != comb1[1]) {
-                    for (comb1[2] = 0; comb1[2] < n/4, comb1[2]++) {
+                    for (comb1[2] = 0; comb1[2] < n/4; comb1[2]++) {
                         if (comb1[2] != comb1[1] && comb1[2] != comb1[0]) {
                             uint64_t* row1 = (uint64_t*)mzd_row(Glw, comb1[0]);
                             uint64_t* row2 = (uint64_t*)mzd_row(Glw, comb1[1]);
                             uint64_t* row3 = (uint64_t*)mzd_row(Glw, comb1[2]);
 
                             // Compute the first sigma bits of the LC of rows 1,2 & 3
-                            uint64_t delta1 = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma)) ^  ((*row2) >> (64 - sigma));
+                            delta1 = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma)) ^  ((*row3) >> (64 - sigma));
                             table_insert(tab, comb1, p, delta1);
                         }
                     }
@@ -399,76 +399,86 @@ mzd_t* isd_stern_canteaut_chabaud_p3(mzd_t* G, uint64_t niter, uint64_t sigma) {
         for (comb2[0] = n/4; comb2[0]  < n/2; comb2[0]++) {
             for (comb2[1] = n/4; comb2[1] < n/2; comb2[1]++) {
                 if (comb2[0] != comb2[1]) {
-                    for (comb2[2] = 0; comb2[2] < n/4, comb2[2]++) {
+                    for (comb2[2] = 0; comb2[2] < n/4; comb2[2]++) {
                         if (comb2[2] != comb2[1] && comb2[2] != comb2[0]) {
+                            uint64_t* row1 = (uint64_t*)mzd_row(Glw, comb1[0]);
+                            uint64_t* row2 = (uint64_t*)mzd_row(Glw, comb1[1]);
+                            uint64_t* row3 = (uint64_t*)mzd_row(Glw, comb1[2]);
 
+                            // Compute the first sigma bits of the LC of rows 1,2 & 3
+                            delta2 = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma)) ^  ((*row3) >> (64 - sigma));
 
-                    // Compute the "key" of the linear combination
-                    delta2 = uxor(mzd_row(Glw, comb2[0]), mzd_row(Glw, comb2[1]), sigma);
+                            // And check if some elements from the previous set already had this key
+                            bucket* buck = table_retrieve_bucket(tab, delta2);
 
-                    // And check if some elements from the previous set already had this key
-                    bucket* buck = table_retrieve_bucket(tab, delta2);
+                            if (buck) {
+                                for (i = 0; i < buck->len; i++) {
+                                    // For each element that had the same key, we have a collision
+                                    if (buck->elems[i] && buck->elems[i]->key == delta2) {
+                                        nb_collision++;
+                                        comb3 = (rci_t*)(buck->elems[i]->data); // get back the indexes of the first linear comb
 
-                    if (buck) {
-                        for (i = 0; i < buck->len; i++) {
-                            // For each element that had the same key, we have a collision
-                            if (buck->elems[i]->key == delta2) {
-                                nb_collision++;
-
-                                comb3 = (rci_t*)(buck->elems[i]->data); // get back the indexes of the first linear comb
 #if defined(AVX512_ENABLED)
-                                void* row1 = mzd_row(Glw, comb3[0]);
-                                void* row2 = mzd_row(Glw, comb3[1]);
-                                void* row3 = mzd_row(Glw, comb3[2]);
-                                void* row4 = mzd_row(Glw, comb2[0]);
-                                void* row5 = mzd_row(Glw, comb2[1]);
-                                void* row6 = mzd_row(Glw, comb2[2]);
+                                        void* row1 = mzd_row(Glw, comb3[0]);
+                                        void* row2 = mzd_row(Glw, comb3[1]);
+                                        void* row3 = mzd_row(Glw, comb3[2]);
+                                        void* row4 = mzd_row(Glw, comb2[0]);
+                                        void* row5 = mzd_row(Glw, comb2[1]);
+                                        void* row6 = mzd_row(Glw, comb2[2]);
 
-                                // TODO xor comb3
-                                __m512i linear_comb_high = _mm512_loadu_si512(row1);
-                                __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
+                                        // TODO xor comb3
+                                        __m512i linear_comb_high = _mm512_loadu_si512(row1);
+                                        __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
 
-                                linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
-                                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
+                                        linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
+                                        linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
 
-                                linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
-                                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
+                                        linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
+                                        linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
 
-                                linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row4));
-                                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row4 + 64));
+                                        linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row4));
+                                        linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row4 + 64));
 
-                                _mm512_storeu_si512(linear_comb, linear_comb_high);
-                                _mm_storeu_si128((__m128i*)(linear_comb + 8), linear_comb_low);
+                                        linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row5));
+                                        linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row5 + 64));
+
+                                        linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row6));
+                                        linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row6 + 64));
+
+                                        _mm512_storeu_si512(linear_comb, linear_comb_high);
+                                        _mm_storeu_si128((__m128i*)(linear_comb + 8), linear_comb_low);
 #else
 
-                                mxor(linear_comb,(uint64_t*)linear_comb, 10);
-                                mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb3[0]), 10);
-                                mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb3[1]), 10);
-                                mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb3[2]), 10);
-                                mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[0]), 10);
-                                mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[1]), 10);
-                                mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[2]), 10);
+                                        mxor(linear_comb,(uint64_t*)linear_comb, 10);
+                                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb3[0]), 10);
+                                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb3[1]), 10);
+                                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb3[2]), 10);
+                                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[0]), 10);
+                                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[1]), 10);
+                                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[2]), 10);
 
 #endif
-                                //printf("DBG Linear comb is : \n");
-                                //printbin(linear_comb, 640);
+                                        //printf("DBG Linear comb is : \n");
+                                        //printbin(linear_comb, 640);
 
-                                wt = 2*p + popcnt64_unrolled(linear_comb, 10);
+                                        wt = 2*p + popcnt64_unrolled(linear_comb, 10);
 
-                                if (wt < min_wt) {
+                                        if (wt < min_wt) {
 
-                                    // Save the new min weight and the indexes of th e linear combination to obtain it
-                                    current = clock();
-                                    double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
-                                    printf("niter=%lu, time=%.3f, wt=%d\n", iter, elapsed, wt);
+                                            // Save the new min weight and the indexes of th e linear combination to obtain it
+                                            current = clock();
+                                            double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+                                            printf("niter=%lu, time=%.3f, wt=%d\n", iter, elapsed, wt);
 
-                                    min_wt = wt;
-                                    // Save the indexes of the LC
-                                    memcpy(min_comb, comb3, p * sizeof(rci_t));
-                                    memcpy(min_comb + p, comb2, p * sizeof(rci_t));
+                                            min_wt = wt;
+                                            // Save the indexes of the LC
+                                            memcpy(min_comb, comb3, p * sizeof(rci_t));
+                                            memcpy(min_comb + p, comb2, p * sizeof(rci_t));
 
-                                    memcpy(min_cw, linear_comb, 80);
-                                    memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
+                                            memcpy(min_cw, linear_comb, 80);
+                                            memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -16,4 +16,7 @@
 //  - min_cw, the lowest codeword found
 mzd_t* isd_stern_canteaut_chabaud_p2(mzd_t* G, uint64_t niter, uint64_t sigma);
 
+mzd_t* isd_stern_canteaut_chabaud_p3(mzd_t* G, uint64_t niter, uint64_t sigma);
+
+
 #endif

@@ -19,8 +19,8 @@ typedef struct elem_ {
 
 typedef struct bucket_ {
 	elem** elems;
-	size_t len; // number of element currently in the bucket
-	size_t count; // the bucket currently have allocated memory for `count` elements
+	size_t len; // the bucket currently have allocated memory for `count` elements
+	size_t count; // number of element currently in the bucket
 } bucket;
 
 typedef struct table_ {

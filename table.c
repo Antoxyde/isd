@@ -30,6 +30,7 @@ void bucket_free_full(bucket* b) {
 			}
 		}
 
+        b->count = 0;
 		free(b->elems);
 		free(b);
 	}

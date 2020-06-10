@@ -134,8 +134,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 #endif
 
         // From here we have a new iset, we can start a Stern iteration
-        uint64_t delta1, delta2;
-        uint64_t lc_index = 0;
+        uint64_t delta, lc_index = 0;
 
         // Gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < n/4; comb1[0]++) {
@@ -145,11 +144,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                     uint64_t* row2 = (uint64_t*)mzd_row(Glw, comb1[1]);
 
                     // Compute the first sigma bits of the LC of rows 1 & 2
-                    delta1 = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
+                    delta = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
 
                     lc_tab[lc_index].index1 = comb1[0];
                     lc_tab[lc_index].index2 = comb1[1];
-                    lc_tab[lc_index].delta = delta1;
+                    lc_tab[lc_index].delta = delta;
                     lc_index++;
                 }
             }
@@ -176,11 +175,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                     uint64_t* row2 = (uint64_t*)mzd_row(Glw, comb2[1]);
 
                     // Compute the first sigma bits of the LC of rows 1 & 2
-                    delta2 = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
+                    delta = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
 
                     // And check if some elements from the previous set already had this key
-                    lc_index  = lc_offsets[delta2];
-                    while (lc_tab[lc_index].delta == delta2) {
+                    lc_index  = lc_offsets[delta];
+                    while (lc_tab[lc_index].delta == delta) {
 
                         comb1[0] = lc_tab[lc_index].index1;
                         comb1[1] = lc_tab[lc_index].index2;

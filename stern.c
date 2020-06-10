@@ -52,7 +52,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
     // Ensure that we work with a systematic generator matrix
     rref_to_systematic(Gtemp, column_perms);
-    mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, n/2, n/2, n);
+    mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, k, k, n);
 
     // Big array which contains all the linear combinations
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
@@ -79,8 +79,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
        // Log the column swapping
         tmp = column_perms[lambda];
-        column_perms[lambda] = column_perms[mu + k];
-        column_perms[mu + k] = tmp;
+        column_perms[lambda] = column_perms[mu + 640 /* k */];
+        column_perms[mu + 640 /* k */] = tmp;
 
         // Clear the bit at the intersection of the lambda'th row and the mu'th column
         // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row
@@ -100,7 +100,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 #endif
 
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
-        for (j = 0; j < n/2; j++) {
+        for (j = 0; j < k; j++) {
             row = Glw->rows[j];
 
 #if defined(AVX512_ENABLED)
@@ -133,7 +133,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         uint64_t delta, lc_index = 0;
 
         // Gen all the LC from the first k/2 rows
-        for (comb1[0] = 0; comb1[0]  < n/4; comb1[0]++) {
+        for (comb1[0] = 0; comb1[0]  < 320 /* n/4 */; comb1[0]++) {
             for (comb1[1] = comb1[0] + 1; comb1[1] < n/4; comb1[1]++) {
                 uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
                 uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
@@ -165,8 +165,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
             }
         }
 
-        for (comb2[0] = n/4; comb2[0]  < n/2; comb2[0]++) {
-            for (comb2[1] = comb2[0] + 1; comb2[1] < n/2; comb2[1]++) {
+        for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
+            for (comb2[1] = comb2[0] + 1; comb2[1] < 640 /* n/2 */; comb2[1]++) {
 
                 // Compute the "key" of the linear combination
                 uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
@@ -239,11 +239,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     }
 
     // Reconstruct the codeword by concatenating the identity and unpermuting the columns
-    mzd_t* ident = mzd_init(1, n/2);
+    mzd_t* ident = mzd_init(1, k);
     for (int i = 0; i < 2*p; i++)
         mzd_write_bit(ident, 0, min_comb[i], 1);
 
-    mzd_t* min_cw_m = mzd_init(1, n/2);
+    mzd_t* min_cw_m = mzd_init(1, k);
     memcpy(mzd_first_row(min_cw_m), min_cw, 80);
 
     mzd_t* min_cw_full = mzd_concat(NULL, ident, min_cw_m);

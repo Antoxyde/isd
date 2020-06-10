@@ -48,7 +48,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
     for (iter = 0; iter < niter; iter++) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
-        lambda = xoshiro256starstar_random() % k;
+        lambda = xoshiro256starstar_random() % 640 /* k */;
         word = Glw->rows[lambda];
 
         mu = xoshiro256starstar_random() % 10;
@@ -65,7 +65,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
 
         // Log the column swapping
         tmp = column_perms[lambda];
-        column_perms[lambda] = column_perms[mu + (n/2)];
+        column_perms[lambda] = column_perms[mu + 640 /* k */];
         column_perms[mu + (n/2)] = tmp;
 
         // Clear the bit at the intersection of the lambda'th row and the mu'th column
@@ -79,13 +79,13 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
 
         // No easy instrinsic to set a single bit to 1 ?
-        mask[mu/64] = ((uint64_t)1 << (mu%64));
+        mask[mu/64] = ((uint64_t)1 << (mu % 64));
         __m512i m1 = _mm512_loadu_si512(mask);
         __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
 #endif
 
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
-        for (j = 0; j < n/2; j++) {
+        for (j = 0; j < 640 /* k */; j++) {
             //row = mzd_row(Glw, j);
             row = Glw->rows[j];
 
@@ -119,7 +119,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
                     // Save our new lowest row and all the permutations made until now
                     row_min_cw = j;
                     mzd_copy_row(min_cw, 0, Glw, j);
-                    memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
+                    memcpy(column_perms_copy, column_perms, 1280 /* n */ * sizeof(rci_t));
                 }
             }
         }

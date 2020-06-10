@@ -137,10 +137,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
         // Gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < 320 /* n/4 */; comb1[0]++) {
+            uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
             for (comb1[1] = comb1[0] + 1; comb1[1] < n/4; comb1[1]++) {
-                uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
                 uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
-
 
                 // Compute the first sigma bits of the LC of rows 1 & 2
                 delta = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
@@ -169,10 +168,12 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         }
 
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
+
+            uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
+
             for (comb2[1] = comb2[0] + 1; comb2[1] < 640 /* n/2 */; comb2[1]++) {
 
                 // Compute the "key" of the linear combination
-                uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
                 uint64_t* row2 = (uint64_t*)Glw->rows[comb2[1]];
 
                 // Compute the first sigma bits of the LC of rows 1 & 2

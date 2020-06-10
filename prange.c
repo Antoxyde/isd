@@ -61,6 +61,9 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
         uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
         j = (j + _tzcnt_u64(val)) % 64;
 
+#if defined(AVX512_ENABLED)
+        uint64_t big_mu = mu; small_mu = j;
+#endif
         mu = mu * 64 + j;
 
         // Log the column swapping
@@ -78,8 +81,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
         __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
 
-        // No easy instrinsic to set a single bit to 1 ?
-        mask[mu/64] = ((uint64_t)1 << (mu % 64));
+        mask[big_mu] = (1ULL << small_mu);
         __m512i m1 = _mm512_loadu_si512(mask);
         __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
 #endif

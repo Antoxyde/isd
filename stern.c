@@ -57,7 +57,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     // Big array which contains all the linear combinations
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
     lc* lc_tab = (lc*)malloc(nelem * sizeof(lc));
-    uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * (1 << sigma));
+    uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * (1ULL << sigma));
 
     for (iter = 0; iter < niter; iter++) {
 
@@ -75,6 +75,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
         j = (j + _tzcnt_u64(val)) % 64;
 
+#if defined(AVX512_ENABLED)
+        uint64_t big_mu = mu, small_mu = j;
+#endif
         mu = mu * 64 + j;
 
        // Log the column swapping
@@ -94,7 +97,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
 
         // No easy instrinsic to set a single bit to 1 ?
-        mask[mu/64] = ((uint64_t)1 << (mu%64));
+        mask[big_mu] = (1ULL << small_mu);
         __m512i m1 = _mm512_loadu_si512(mask);
         __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
 #endif

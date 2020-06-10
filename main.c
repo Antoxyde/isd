@@ -17,7 +17,7 @@ int main(void) {
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    uint64_t niter = 100;
+    uint64_t niter = 1000000;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
@@ -53,4 +53,5 @@ int main(void) {
     mzd_free(min_cw);
     mzd_free(G);
     mzd_free(H);
+    mzd_free(Hct);
 }

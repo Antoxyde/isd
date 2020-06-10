@@ -19,14 +19,14 @@ int compare_lc(const void* a, const void* b) {
 
 mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma) {
 
-    clock_t start, current;
-    start = clock();
+    clock_t start = clock(), current;
+    double elapsed = 0.0;
 
-    uint64_t p = 2, iter, nb_collision = 0;
-    rci_t n = G->ncols, comb1[2], comb2[2], min_comb[4],lambda, mu, tmp, i, j;
 
-    int min_wt = n, wt = 0;
+    uint64_t p = 2, iter = 0, nb_collision = 0;
+    rci_t n = G->ncols, comb1[2], comb2[2], min_comb[4],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
 
+    int min_wt = 1000, wt = 0;
     void* row = NULL;
     (void)row; // otherwise gcc is :-(
 
@@ -177,7 +177,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
                     // And check if some elements from the previous set already had this key
                     lc_index  = lc_offsets[delta];
-                    while (lc_tab[lc_index].delta == delta) {
+                    while (lc_index < nelem && lc_tab[lc_index].delta == delta) {
 
                         comb1[0] = lc_tab[lc_index].index1;
                         comb1[1] = lc_tab[lc_index].index2;
@@ -222,7 +222,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
                             // Save the new min weight and the indexes of th e linear combination to obtain it
                             current = clock();
-                            double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+                            elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
                             printf("niter=%lu, time=%.3f, wt=%d\n", iter, elapsed, wt);
 
                             min_wt = wt;
@@ -261,6 +261,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     mzd_free(Gtemp);
     mzd_free(Glw);
     mzd_free(min_cw_full);
+    mzd_free(min_cw_m);
     mzd_free(ident);
 
     free(min_cw);

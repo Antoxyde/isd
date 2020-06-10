@@ -3,6 +3,7 @@
 #include "xoshiro256starstar.h"
 #include "libpopcnt.h"
 #include <time.h>
+#include <immintrin.h>
 
 // Represent a linear combination
 typedef struct lc_ {
@@ -21,9 +22,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     clock_t start = clock(), current;
     double elapsed = 0.0;
 
-
     uint64_t p = 2, iter = 0, nb_collision = 0;
     rci_t n = G->ncols, comb1[2], comb2[2], min_comb[4],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
+    rci_t k = n/2;
 
     int min_wt = 1000, wt = 0;
     void* row = NULL;
@@ -61,7 +62,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     for (iter = 0; iter < niter; iter++) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
-        lambda = xoshiro256starstar_random() % (n/2);
+        lambda = xoshiro256starstar_random() % k;
         word = Glw->rows[lambda];
 
         mu = xoshiro256starstar_random() % 10;
@@ -70,19 +71,16 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
             mu = (mu + 1) % 10;
         }
 
-        word += mu;
-
-        do {
-            j  = xoshiro256starstar_random() % 64;
-            for (; j < 64 && ((*word >> j) & 1) == 0; j++);
-        } while (((*word >> j) & 1) == 0);
+        j  = xoshiro256starstar_random() % 64;
+        uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
+        j = (j + _tzcnt_u64(val)) % 64;
 
         mu = mu * 64 + j;
 
        // Log the column swapping
         tmp = column_perms[lambda];
-        column_perms[lambda] = column_perms[mu + (n/2)];
-        column_perms[mu + (n/2)] = tmp;
+        column_perms[lambda] = column_perms[mu + k];
+        column_perms[mu + k] = tmp;
 
         // Clear the bit at the intersection of the lambda'th row and the mu'th column
         // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row

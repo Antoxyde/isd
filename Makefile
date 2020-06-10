@@ -1,7 +1,7 @@
 CC=gcc
 INCDIRS=-I.
 LDFLAGS=
-override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function
+override CFLAGS +=-Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function -mbmi
 EXECUTABLES=main
 
 all: $(EXECUTABLES)

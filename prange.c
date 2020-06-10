@@ -48,7 +48,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
     for (iter = 0; iter < niter; iter++) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
-        lambda = xoshiro256starstar_random() % (n/2);
+        lambda = xoshiro256starstar_random() % k;
         word = Glw->rows[lambda];
 
         mu = xoshiro256starstar_random() % 10;
@@ -57,12 +57,9 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
             mu = (mu + 1) % 10;
         }
 
-        word += mu;
-
-        do {
-            j  = xoshiro256starstar_random() % 64;
-            for (; j < 64 && ((*word >> j) & 1) == 0; j++);
-        } while (((*word >> j) & 1) == 0);
+        j  = xoshiro256starstar_random() % 64;
+        uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
+        j = (j + _tzcnt_u64(val)) % 64;
 
         mu = mu * 64 + j;
 

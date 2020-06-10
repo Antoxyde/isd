@@ -1,2 +1,5 @@
 *.so
 tags
+*.o
+gmon.out
+callgrind*

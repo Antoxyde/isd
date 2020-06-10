@@ -7,8 +7,8 @@
 
 // Represent a linear combination
 typedef struct lc_ {
-    rci_t index1,index2;
-    uint64_t delta;
+    uint16_t index1,index2;
+    uint32_t delta;
 } lc;
 
 

@@ -59,6 +59,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     lc* lc_tab = (lc*)malloc(nelem * sizeof(lc));
     uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * (1ULL << sigma));
 
+    // Precomputed mask for the window on which we want collision
+    uint64_t sigmask = (1 << sigma) - 1;
+
     for (iter = 0; iter < niter; iter++) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
@@ -140,15 +143,13 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
             // Get the first sigma bits of the first row
             uint64_t row1 = ((uint64_t*)Glw->rows[comb1[0]])[0];
-            row1 >>= (64 - sigma);
 
             for (comb1[1] = comb1[0] + 1; comb1[1] < n/4; comb1[1]++) {
 
                 uint64_t row2 = ((uint64_t*)Glw->rows[comb1[1]])[0];
-                row2 >>= (64 - sigma);
 
                 // Compute the first sigma bits of the LC of rows 1 & 2
-                delta = row1 ^ row2;
+                delta = (row1 ^ row2) & sigmask;
 
                 lc_tab[lc_index].index1 = comb1[0];
                 lc_tab[lc_index].index2 = comb1[1];
@@ -158,10 +159,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         }
 
         qsort(lc_tab, nelem, sizeof(lc), &compare_lc);
-
-        // qsort is working, but lc_tab is not sorted when calling heapsort or mergesort ?_?
-        //heapsort(lc_tab, nelem, sizeof(lc), &compare_lc);
-        //mergesort(lc_tab, nelem, sizeof(lc), &compare_lc);
 
         uint64_t old = 0;
         lc_index = 0;

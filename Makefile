@@ -1,5 +1,5 @@
 CC=gcc
-INCDIRS=-Im4ri/m4ri/ -Im4ri
+INCDIRS=-I.
 LDFLAGS=-lbsd
 override CFLAGS += -Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function
 EXECUTABLES=main

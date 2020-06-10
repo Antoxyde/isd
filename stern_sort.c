@@ -66,7 +66,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         lambda = xoshiro256starstar_random() % (n/2);
         do {
             mu = xoshiro256starstar_random() % 10;
-            //word = mzd_row(Glw, lambda);
             word = Glw->rows[lambda];
         } while (word[mu] == 0);
 
@@ -91,7 +90,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
 
 #if defined(AVX512_ENABLED)
-        //void* row_lambda = mzd_row(Glw, lambda);
         void* row_lambda = Glw->rows[lambda];
         __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
@@ -104,8 +102,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
         // Add the lambda'th row to every other row that have a 1 in the mu'th column
         for (j = 0; j < n/2; j++) {
-            row = mzd_row(Glw, j);
-            //row = Glw->rows[j];
+            row = Glw->rows[j];
 
 #if defined(AVX512_ENABLED)
             // Load the whole row
@@ -140,8 +137,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         for (comb1[0] = 0; comb1[0]  < n/4; comb1[0]++) {
             for (comb1[1] = 0; comb1[1] < n/4; comb1[1]++) {
                 if (comb1[0] != comb1[1]) {
-                    uint64_t* row1 = (uint64_t*)mzd_row(Glw, comb1[0]);
-                    uint64_t* row2 = (uint64_t*)mzd_row(Glw, comb1[1]);
+                    uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
+                    uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
+
 
                     // Compute the first sigma bits of the LC of rows 1 & 2
                     delta = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
@@ -171,8 +169,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                 if (comb2[0] != comb2[1]) {
 
                     // Compute the "key" of the linear combination
-                    uint64_t* row1 = (uint64_t*)mzd_row(Glw, comb2[0]);
-                    uint64_t* row2 = (uint64_t*)mzd_row(Glw, comb2[1]);
+                    uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
+                    uint64_t* row2 = (uint64_t*)Glw->rows[comb2[1]];
 
                     // Compute the first sigma bits of the LC of rows 1 & 2
                     delta = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
@@ -188,10 +186,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                         lc_index++;
 
 #if defined(AVX512_ENABLED)
-                        void* row1 = mzd_row(Glw, comb1[0]);
-                        void* row2 = mzd_row(Glw, comb1[1]);
-                        void* row3 = mzd_row(Glw, comb2[0]);
-                        void* row4 = mzd_row(Glw, comb2[1]);
+                        void* row1 = Glw->rows[comb1[0]];
+                        void* row2 = Glw->rows[comb1[1]];
+                        void* row3 = Glw->rows[comb2[0]];
+                        void* row4 = Glw->rows[comb2[1]];
 
                         __m512i linear_comb_high = _mm512_loadu_si512(row1);
                         __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
@@ -210,10 +208,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 #else
 
                         mxor(linear_comb,(uint64_t*)linear_comb, 10);
-                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb1[0]), 10);
-                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb1[1]), 10);
-                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[0]), 10);
-                        mxor(linear_comb, (uint64_t*)mzd_row(Glw, comb2[1]), 10);
+                        mxor(linear_comb, (uint64_t*)Glw->rows[comb1[0]], 10);
+                        mxor(linear_comb, (uint64_t*)Glw->rows[comb1[1]], 10);
+                        mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
+                        mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
 #endif
                         //printf("DBG Linear comb is : \n");
                         //printbin(linear_comb, 640);

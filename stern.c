@@ -144,7 +144,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
             for (comb1[1] = comb1[0] + 1; comb1[1] < n/4; comb1[1]++) {
 
-                uint64_t row2 = ((uint64_t*)Glw->rows[comb1[0]])[0];
+                uint64_t row2 = ((uint64_t*)Glw->rows[comb1[1]])[0];
                 row2 >>= (64 - sigma);
 
                 // Compute the first sigma bits of the LC of rows 1 & 2

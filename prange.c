@@ -15,6 +15,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
     rci_t n = G->ncols, i, j,
           row_min_cw = 0,  // retains the row from which the lowest codeword has been found
           lambda, mu, tmp;
+    rci_t k = n/2;
 
     void* row = NULL;
     uint64_t* word = NULL;
@@ -35,25 +36,26 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
 
     // init to the weight of the 1 vector
     int min_wt = n;
-    mzd_t* min_cw = mzd_init(1,n/2);
+    mzd_t* min_cw = mzd_init(1,k);
     mzd_t* Gtemp = mzd_copy(NULL, G);
 
     // Ensure that we work with a systematic generator matrix
     rref_to_systematic(Gtemp, column_perms);
 
     // Glw contains only the redundant part of G
-    mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, n/2, n/2, n);
+    mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, k, k, n);
 
     for (iter = 0; iter < niter; iter++) {
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
-        // Assuming that a whole row can't be totally 0, but that 64 bits subset of that row
         lambda = xoshiro256starstar_random() % (n/2);
-        do {
-            mu = xoshiro256starstar_random() % 10;
-            //word = mzd_row(Glw, lambda);
-            word = Glw->rows[lambda];
-        } while (word[mu] == 0);
+        word = Glw->rows[lambda];
+
+        mu = xoshiro256starstar_random() % 10;
+        // Assuming a whole row can't be zero
+        while (word[mu] == 0) {
+            mu = (mu + 1) % 10;
+        }
 
         word += mu;
 

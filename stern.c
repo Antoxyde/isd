@@ -214,14 +214,16 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                     void* row1 = Glw->rows[comb1[0]];
                     void* row2 = Glw->rows[comb1[1]];
 
+                    // Load the two new rows and add them to the LC of the two previous ones.
                     __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row1));
                     __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row1 + 64));
 
                     linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row2));
                     linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row2 + 64));
 
-                    _mm512_storeu_si512(linear_comb_next, linear_comb_high);
-                    _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low);
+                    // Save the result of the LC of the 4 rows
+                    _mm512_storeu_si512(linear_comb_next, linear_comb_high_next);
+                    _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low_next);
 #else
                     memcpy(linear_comb_next, linear_comb, 80);
                     mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[0]], 10);

@@ -150,6 +150,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
                 // Compute the first sigma bits of the LC of rows 1 & 2
                 delta = (row1 ^ row2) & sigmask;
+                //delta = (row1 ^ row2) >> (64 - sigma);
 
                 lc_tab[lc_index].index1 = comb1[0];
                 lc_tab[lc_index].index2 = comb1[1];
@@ -170,25 +171,17 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
             }
         }
 
-
-
-
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
 
-            uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
-
-#if defined(HAVE512_ENABLED)
-
-#endif
+            uint64_t row1 = ((uint64_t*)Glw->rows[comb2[0]])[0];
 
             for (comb2[1] = comb2[0] + 1; comb2[1] < 640 /* n/2 */; comb2[1]++) {
 
                 // Compute the "key" of the linear combination
-                uint64_t* row2 = (uint64_t*)Glw->rows[comb2[1]];
-
+                uint64_t row2 = ((uint64_t*)Glw->rows[comb2[1]])[0];
 
                 // Compute the first sigma bits of the LC of rows 1 & 2
-                delta = ((*row1) >> (64 - sigma)) ^ ((*row2) >> (64 - sigma));
+                delta = (row1 ^ row2) & sigmask;
 
                 // And check if some elements from the previous set already had this key
                 lc_index  = lc_offsets[delta];
@@ -228,8 +221,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                     mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
                     mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
 #endif
-                    //printf("DBG Linear comb is : \n");
-                    //printbin(linear_comb, 640);
+                    printf("DBG Linear comb is : \n");
+                    printbin(linear_comb, 640);
 
                     wt = 2*p + popcnt64_unrolled(linear_comb, 10);
 

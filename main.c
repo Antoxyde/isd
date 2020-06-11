@@ -12,7 +12,6 @@
 
 int main(void) {
 
-    //uint64_t seed[4] = {1,2,3,4};
     clock_t start, stop;
     double time_elapsed;
 
@@ -25,11 +24,12 @@ int main(void) {
         return 1;
     }
 
+    //uint64_t seed[4] = {1,2,3,4};
     //xoshiro256starstar_random_set(seed);
 
     start = clock();
 
-    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, niter, 18);
+    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, niter, 18, 9, 2);
     //mzd_t* min_cw = isd_prange_canteaut_chabaud(G, niter);
 
     if (!min_cw) {

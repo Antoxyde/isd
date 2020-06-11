@@ -19,9 +19,12 @@ typedef struct lc_ {
 //  - G, a n/2 x n generator matrix
 //  - niter, the number of iteration to make
 //  - sigma and p, the Stern parameters
+//  - radix_width: the window size denomsort will use at each iteration
+//  - radix_nlen: sigma/radix_width, number of iteration that radixsort will make.
 //  Output:
 //  - min_cw, the lowest codeword found
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma);
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen);
+
 int compare_lc(const void* a, const void* b);
 lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* Aux);
 lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32_t* aux);

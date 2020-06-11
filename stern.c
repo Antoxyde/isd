@@ -7,19 +7,20 @@
 
 
 
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma) {
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen) {
 
+    // time mesuring stuff
     clock_t start = clock(), current;
     double elapsed = 0.0;
 
+    // p is the Stern p parameter. (= number of LC to make for each rows subsets)
     uint64_t p = 2, iter = 0, nb_collision = 0;
-    rci_t n = G->ncols, comb1[2], comb2[2], min_comb[4],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
-    rci_t k = n/2;
+    rci_t n = G->ncols, comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
+    rci_t k = n/2; // number of rows in G
 
     int min_wt = 1000, wt = 0;
     void* row = NULL;
     (void)row; // otherwise gcc is :-(
-
 
 #if defined(AVX512_ENABLED)
     uint64_t mask[10];
@@ -59,16 +60,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
 
-    //
-    uint64_t radix_width = 9, radix_nlen = 2;
-	uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
+    // Radix sort offsets array
+    uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
 
     for (iter = 0; iter < niter; iter++) {
 
         // If we call radixsort with an odd nlen, lc_tab_sorted will point to lc_tab
         lc_tab_sorted = lc_tab_sorted_save;
         lc_tab = lc_tab_save;
-
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         lambda = xoshiro256starstar_random() % k;
@@ -105,7 +104,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
         __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
 
-        // No easy instrinsic to set a single bit to 1 ?
         mask[big_mu] = (1ULL << small_mu);
         __m512i m1 = _mm512_loadu_si512(mask);
         __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
@@ -295,7 +293,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     free(column_perms);
     free(lc_offsets);
     free(lc_tab);
-	free(aux);
+    free(aux);
 
     return result;
 }
@@ -307,40 +305,40 @@ int compare_lc(const void* a, const void* b) {
 
 lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* Aux) {
 
-	uint32_t mask, k;
-	int64_t i;
-	k = 1 << width;
+    uint32_t mask, k;
+    int64_t i;
+    k = 1 << width;
     mask = k - 1;
 
     memset(Aux, 0, k * sizeof(uint32_t));
 
-	for (i = 0; i < Tlen; i++) {
-		Aux[ (T[i].delta >> pos) & mask]++;
-	}
+    for (i = 0; i < Tlen; i++) {
+        Aux[ (T[i].delta >> pos) & mask]++;
+    }
 
-	for (i = 1; i < k; i++) {
-		Aux[i] += Aux[i - 1];
-	}
+    for (i = 1; i < k; i++) {
+        Aux[i] += Aux[i - 1];
+    }
 
-	for (i = Tlen - 1; i >= 0; i--) {
+    for (i = Tlen - 1; i >= 0; i--) {
         uint32_t val = (T[i].delta >> pos) & mask;
         Aux[val]--;
-		Ts[ Aux[val]] = T[i];
-	}
+        Ts[ Aux[val]] = T[i];
+    }
 
-	return Ts;
+    return Ts;
 }
 
 lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32_t* aux) {
 
-	int i;
-	lc* tmp;
+    int i;
+    lc* tmp;
 
-	for (i = 0; i < nlen; i++) {
-		tmp = T;
-		T = denomsort_r(T, Ts, Tlen, width, i*width, aux);
-		Ts = tmp;
-	}
+    for (i = 0; i < nlen; i++) {
+        tmp = T;
+        T = denomsort_r(T, Ts, Tlen, width, i*width, aux);
+        Ts = tmp;
+    }
 
-	return T;
+    return T;
 }

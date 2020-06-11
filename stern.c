@@ -38,6 +38,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
     uint64_t* word = NULL;
     uint64_t* linear_comb = (uint64_t*)malloc(sizeof(uint64_t) * 10);
+    uint64_t* linear_comb_next = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     uint64_t* min_cw = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
@@ -186,6 +187,24 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
                 // And check if some elements from the previous set already had this key
                 lc_index  = lc_offsets[delta];
+
+#if defined(AVX512_ENABLED)
+                void* row3 = Glw->rows[comb2[0]];
+                void* row4 = Glw->rows[comb2[1]];
+
+                __m512i linear_comb_high = _mm512_loadu_si512(row3);
+                __m128i linear_comb_low = _mm_loadu_si128(row3 + 64);
+
+                linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row4));
+                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row4 + 64));
+#else
+
+                mxor(linear_comb,(uint64_t*)linear_comb, 10);
+                mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
+                mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
+
+#endif
+
                 while (lc_index < nelem && lc_tab[lc_index].delta == delta) {
 
                     comb1[0] = lc_tab[lc_index].index1;
@@ -197,35 +216,25 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 #if defined(AVX512_ENABLED)
                     void* row1 = Glw->rows[comb1[0]];
                     void* row2 = Glw->rows[comb1[1]];
-                    void* row3 = Glw->rows[comb2[0]];
-                    void* row4 = Glw->rows[comb2[1]];
 
-                    __m512i linear_comb_high = _mm512_loadu_si512(row1);
-                    __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
+                    __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row1));
+                    __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row1 + 64));
 
-                    linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
-                    linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
+                    linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row2));
+                    linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row2 + 64));
 
-                    linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
-                    linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
-
-                    linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row4));
-                    linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row4 + 64));
-
-                    _mm512_storeu_si512(linear_comb, linear_comb_high);
-                    _mm_storeu_si128((__m128i*)(linear_comb + 8), linear_comb_low);
+                    _mm512_storeu_si512(linear_comb_next, linear_comb_high);
+                    _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low);
 #else
+                    memcpy(linear_comb_next, linear_comb, 80);
+                    mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[0]], 10);
+                    mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[1]], 10);
 
-                    mxor(linear_comb,(uint64_t*)linear_comb, 10);
-                    mxor(linear_comb, (uint64_t*)Glw->rows[comb1[0]], 10);
-                    mxor(linear_comb, (uint64_t*)Glw->rows[comb1[1]], 10);
-                    mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
-                    mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
 #endif
                     //printf("DBG Linear comb is : \n");
                     //printbin(linear_comb, 640);
 
-                    wt = popcnt64_unrolled(linear_comb, 10);
+                    wt = popcnt64_unrolled(linear_comb_next, 10);
 
                     if (wt < min_wt) {
 
@@ -239,7 +248,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                         memcpy(min_comb, comb1, p * sizeof(rci_t));
                         memcpy(min_comb + p, comb2, p * sizeof(rci_t));
 
-                        memcpy(min_cw, linear_comb, 80);
+                        memcpy(min_cw, linear_comb_next, 80);
                         memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
                     }
                 }

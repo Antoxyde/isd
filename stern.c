@@ -5,16 +5,6 @@
 #include <time.h>
 #include <immintrin.h>
 
-// Represent a linear combination
-typedef struct lc_ {
-    uint16_t index1,index2;
-    uint32_t delta;
-} lc;
-
-
-int compare_lc(const void* a, const void* b) {
-    return ((lc*)a)->delta > ((lc*)b)->delta;
-}
 
 
 mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma) {
@@ -58,11 +48,17 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     // Big array which contains all the linear combinations
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
     lc* lc_tab = (lc*)malloc(nelem * sizeof(lc));
+    lc* lc_tab_sorted = (lc*)malloc(nelem * sizeof(lc));
+
     uint32_t nb_keys = 1UL << sigma;
     uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * nb_keys);
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
+
+    //
+    uint64_t radix_width = 2, radix_nlen = sigma/2;
+	uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
 
     for (iter = 0; iter < niter; iter++) {
 
@@ -160,7 +156,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
             }
         }
 
-        qsort(lc_tab, nelem, sizeof(lc), &compare_lc);
+        //qsort(lc_tab, nelem, sizeof(lc), &compare_lc);
+        lc_tab_sorted = radixsort(lc_tab, lc_tab_sorted, nelem, radix_width, radix_nlen, aux);
 
         lc_index = 0;
 
@@ -288,8 +285,54 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     free(column_perms);
     free(lc_offsets);
     free(lc_tab);
+	free(aux);
 
     return result;
 }
 
+int compare_lc(const void* a, const void* b) {
+    return ((lc*)a)->delta > ((lc*)b)->delta;
+}
 
+
+lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* Aux) {
+
+	uint32_t mask, k;
+	int64_t i;
+	k = 1 << width;
+    mask = k - 1;
+
+    memset(Aux, 0, k * sizeof(uint32_t));
+
+	for (i = 0; i < Tlen; i++) {
+		Aux[ (T[i].delta >> pos) & mask] += 1;
+	}
+
+	for (i = 1; i < k; i++) {
+		Aux[i] += Aux[i - 1];
+	}
+
+	for (i = Tlen - 1; i >=0; i--) {
+		Ts[ Aux[ (T[i].delta >> pos) & mask] ] = T[i];
+	}
+
+	return Ts;
+
+}
+
+lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32_t* aux) {
+
+	int i;
+	lc* tmp;
+
+	for (i = 0; i < nlen; i++) {
+		denomsort_r(T, Ts, Tlen, width, i*width, aux);
+
+		// w00t ??
+		tmp = T;
+		T = Ts;
+		Ts = tmp;
+	}
+
+	return Ts;
+}

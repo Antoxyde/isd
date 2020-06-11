@@ -62,7 +62,7 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
         j = (j + _tzcnt_u64(val)) % 64;
 
 #if defined(AVX512_ENABLED)
-        uint64_t big_mu = mu; small_mu = j;
+        uint64_t big_mu = mu, small_mu = j;
 #endif
         mu = mu * 64 + j;
 

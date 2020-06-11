@@ -8,6 +8,13 @@
 #include <m4ri/m4ri.h>
 #include <stdint.h>
 
+// Represent a linear combination
+typedef struct lc_ {
+    uint16_t index1,index2;
+    uint32_t delta;
+} lc;
+
+
 // Input:
 //  - G, a n/2 x n generator matrix
 //  - niter, the number of iteration to make
@@ -15,6 +22,8 @@
 //  Output:
 //  - min_cw, the lowest codeword found
 mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma);
-
+int compare_lc(const void* a, const void* b);
+lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* Aux);
+lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32_t* aux);
 
 #endif

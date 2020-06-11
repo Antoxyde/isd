@@ -283,6 +283,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
     free(min_cw);
     free(linear_comb);
+    free(linear_comb_next);
     free(column_perms_copy);
     free(column_perms);
     free(lc_offsets);

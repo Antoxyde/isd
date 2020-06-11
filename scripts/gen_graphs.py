@@ -19,6 +19,7 @@ for runfile in glob.glob("runs/prange*"):
 plt.xlabel("Time in second")
 plt.ylabel("Hamming weigth")
 plt.title("Prange runs (24h each)")
+plt.ylim(220,240)
 plt.show()
 
 

@@ -50,6 +50,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     lc* lc_tab = (lc*)malloc(nelem * sizeof(lc));
     lc* lc_tab_sorted = (lc*)malloc(nelem * sizeof(lc));
 
+    lc* lc_tab_save = lc_tab;
+    lc* lc_tab_sorted_save = lc_tab_sorted;
+
     uint32_t nb_keys = 1UL << sigma;
     uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * nb_keys);
 
@@ -57,10 +60,15 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     uint64_t sigmask = (1 << sigma) - 1;
 
     //
-    uint64_t radix_width = 2, radix_nlen = sigma/2;
+    uint64_t radix_width = 9, radix_nlen = 2;
 	uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
 
     for (iter = 0; iter < niter; iter++) {
+
+        // If we call radixsort with an odd nlen, lc_tab_sorted will point to lc_tab
+        lc_tab_sorted = lc_tab_sorted_save;
+        lc_tab = lc_tab_save;
+
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         lambda = xoshiro256starstar_random() % k;
@@ -231,7 +239,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
 #endif
                     //printf("DBG Linear comb is : \n");
-                    //printbin(linear_comb, 640);
+                    //printbin(linear_comb_next, 640);
 
                     wt = popcnt64_unrolled(linear_comb_next, 10);
 
@@ -307,19 +315,20 @@ lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint3
     memset(Aux, 0, k * sizeof(uint32_t));
 
 	for (i = 0; i < Tlen; i++) {
-		Aux[ (T[i].delta >> pos) & mask] += 1;
+		Aux[ (T[i].delta >> pos) & mask]++;
 	}
 
 	for (i = 1; i < k; i++) {
 		Aux[i] += Aux[i - 1];
 	}
 
-	for (i = Tlen - 1; i >=0; i--) {
-		Ts[ Aux[ (T[i].delta >> pos) & mask] ] = T[i];
+	for (i = Tlen - 1; i >= 0; i--) {
+        uint32_t val = (T[i].delta >> pos) & mask;
+        Aux[val]--;
+		Ts[ Aux[val]] = T[i];
 	}
 
 	return Ts;
-
 }
 
 lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32_t* aux) {
@@ -328,13 +337,10 @@ lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32
 	lc* tmp;
 
 	for (i = 0; i < nlen; i++) {
-		denomsort_r(T, Ts, Tlen, width, i*width, aux);
-
-		// w00t ??
 		tmp = T;
-		T = Ts;
+		T = denomsort_r(T, Ts, Tlen, width, i*width, aux);
 		Ts = tmp;
 	}
 
-	return Ts;
+	return T;
 }

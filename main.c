@@ -37,7 +37,6 @@ int main(void) {
         return 0;
     }
 
-
     stop = clock();
     time_elapsed = ((double)(stop - start))/CLOCKS_PER_SEC;
 

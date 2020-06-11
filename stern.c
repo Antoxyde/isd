@@ -57,7 +57,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     // Big array which contains all the linear combinations
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
     lc* lc_tab = (lc*)malloc(nelem * sizeof(lc));
-    uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * (1ULL << sigma));
+    uint32_t nb_keys = 1UL << sigma;
+    uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * nb_keys);
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
@@ -150,7 +151,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
                 // Compute the first sigma bits of the LC of rows 1 & 2
                 delta = (row1 ^ row2) & sigmask;
-                //delta = (row1 ^ row2) >> (64 - sigma);
 
                 lc_tab[lc_index].index1 = comb1[0];
                 lc_tab[lc_index].index2 = comb1[1];
@@ -161,15 +161,16 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
         qsort(lc_tab, nelem, sizeof(lc), &compare_lc);
 
-        uint64_t old = 0;
         lc_index = 0;
 
+        memset(lc_offsets, 0, sizeof(uint32_t) * nb_keys);
+
         for (lc_index = 0; lc_index < nelem; lc_index++) {
-           while (lc_tab[lc_index].delta >= old) {
-                lc_offsets[old] = lc_index;
-                old++;
+            if (lc_offsets[lc_tab[lc_index].delta] == 0) {
+                lc_offsets[lc_tab[lc_index].delta] = lc_index;
             }
         }
+
 
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
 
@@ -221,17 +222,17 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                     mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
                     mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
 #endif
-                    printf("DBG Linear comb is : \n");
-                    printbin(linear_comb, 640);
+                    //printf("DBG Linear comb is : \n");
+                    //printbin(linear_comb, 640);
 
-                    wt = 2*p + popcnt64_unrolled(linear_comb, 10);
+                    wt = popcnt64_unrolled(linear_comb, 10);
 
                     if (wt < min_wt) {
 
                         // Save the new min weight and the indexes of th e linear combination to obtain it
                         current = clock();
                         elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
-                        printf("niter=%lu, time=%.3f, wt=%d\n", iter, elapsed, wt);
+                        printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt + 2*p);
 
                         min_wt = wt;
                         // Save the indexes of the LC

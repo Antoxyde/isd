@@ -1,6 +1,5 @@
 #include "utils.h"
 #include "libpopcnt.h"
-#include "prange.h"
 #include "stern.h"
 #include "xoshiro256starstar.h"
 
@@ -12,25 +11,29 @@
 
 int main(void) {
 
+    uint64_t niter = 1000;
+    char challenge_file[] = "challenges/LW_1280_1";
+    uint64_t sigma = 18;
+    uint64_t radix_width = 9;
+    uint64_t radix_nlen = 2;
+    //uint64_t seed[4] = {1,2,3,4};
+    //xoshiro256starstar_random_set(seed);
+
+
     clock_t start, stop;
     double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
-    uint64_t niter = 1000;
     mzd_t* G = mzd_init(n/2, n);
     mzd_t* H = mzd_init(n/2, n);
 
-    if (!load_challenge("challenges/LW_1280_1", G, H)) {
+    if (!load_challenge(challenge_file, G, H)) {
         return 1;
     }
 
-    //uint64_t seed[4] = {1,2,3,4};
-    //xoshiro256starstar_random_set(seed);
-
     start = clock();
 
-    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, niter, 18, 9, 2);
-    //mzd_t* min_cw = isd_prange_canteaut_chabaud(G, niter);
+    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, niter, sigma, radix_width, radix_nlen);
 
     if (!min_cw) {
         printf("failed, leaving.\n");
@@ -42,6 +45,7 @@ int main(void) {
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
 
+    printf("Challenge : %s\n", challenge_file);
     printf("Min codeword found : \n");
     printf("wt : %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
     printf("Verif : %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");

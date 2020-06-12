@@ -3,3 +3,4 @@ tags
 *.o
 gmon.out
 callgrind*
+notes.md

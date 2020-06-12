@@ -9,13 +9,49 @@
 #include <math.h>
 
 
-int main(void) {
+int main(int argc, char** argv) {
 
-    uint64_t niter = 1000;
-    char challenge_file[] = "challenges/LW_1280_1";
+    uint64_t niter = 100000;
+    char *challenge_file = "challenges/LW_1280_1";
     uint64_t sigma = 18;
     uint64_t radix_width = 9;
     uint64_t radix_nlen = 2;
+
+    if (argc > 1) {
+
+        if (argc == 6) {
+            challenge_file = argv[1];
+            niter = atoi(argv[2]);
+            sigma = atoi(argv[3]);
+            radix_width = atoi(argv[4]);
+            radix_nlen = atoi(argv[5]);
+        } else {
+            printf("Usage : %s <challenge file> <niter> <sigma> <radix width> <radix nlen>\n", argv[0]);
+            return 0;
+        }
+    }
+
+    printf("# Running with the following configuration :\n");
+
+#if defined(DEBUG)
+    printf("# Mode: debug\n");
+#else
+    printf("# Mode: release\n");
+#endif
+
+#if defined(AVX512_ENABLED)
+    printf("# AVX512: enabled\n");
+#else
+    printf("# AVX512: disabled\n");
+#endif
+
+    printf("# Algorithm: Stern\n");
+    printf("# Sigma: %lu\n", sigma);
+    printf("# Radix width: %lu\n", radix_width);
+    printf("# Radix nlen: %lu\n", radix_nlen);
+    printf("# Challenge file: %s\n", challenge_file);
+    printf("# Niter: %lu\n", niter);
+
     //uint64_t seed[4] = {1,2,3,4};
     //xoshiro256starstar_random_set(seed);
 
@@ -45,12 +81,10 @@ int main(void) {
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
 
-    printf("Challenge : %s\n", challenge_file);
-    printf("Min codeword found : \n");
-    printf("wt : %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
-    printf("Verif : %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
-    printf("Total time: %.3f\n", time_elapsed);
-    printf("Iter/s : %.3f\n", ((double)niter)/time_elapsed);
+    printf("# Weight: %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
+    printf("# Verification: %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
+    printf("# Total running time: %.3fs\n", time_elapsed);
+    printf("# Iter/s: %.3f\n", ((double)niter)/time_elapsed);
 
     print_cw(min_cw);
     mzd_free(min_cw);

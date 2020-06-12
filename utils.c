@@ -90,7 +90,7 @@ int left_is_identity(const mzd_t* M) {
 }
 
 void print_cw(mzd_t* cw) {
-    printf("cw = ");
+    printf("# Cw = ");
     for (int i = 0; i < cw->ncols; i++) printf(mzd_read_bit(cw, 0, i) ? "1" : "0");
     printf("\n");
 }

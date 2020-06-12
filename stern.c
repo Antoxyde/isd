@@ -278,7 +278,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         }
     }
 
-    printf("nb_collision/iset : %.3f\n", (double)nb_collision/(double)niter);
+    printf("# average collisions/iter : %.3f\n", (double)nb_collision/(double)niter);
 
     mzd_free(Gtemp);
     mzd_free(Glw);

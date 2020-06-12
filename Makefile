@@ -1,8 +1,13 @@
 DEBUG ?= 1
+AVX ?= 1
 ifeq ($(DEBUG), 1)
 	CFLAGS=-g -Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function -mbmi -DDEBUG
 else
-	CFLAGS=-march=native -Ofast $(INCDIRS) --std=c99 -Wl,-rpath=. -mbmi
+	ifeq ($(AVX), 1)
+		CFLAGS=-Ofast $(INCDIRS) --std=c99 -Wl,-rpath=. -mbmi -mavx512vl -mavx512f -mavx512dq
+	else
+		CFLAGS=-march=native -Ofast $(INCDIRS) --std=c99 -Wl,-rpath=. -mbmi
+	endif
 endif
 
 

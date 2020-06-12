@@ -1,7 +1,14 @@
+DEBUG ?= 1
+ifeq ($(DEBUG), 1)
+	CFLAGS=-g -Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function -mbmi
+else
+	CFLAGS=-march=native -Ofast $(INCDIRS) --std=c99 -Wl,-rpath=. -mbmi
+endif
+
+
 CC=gcc
 INCDIRS=-I.
 LDFLAGS=
-override CFLAGS +=-Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function -mbmi
 EXECUTABLES=main
 
 all: $(EXECUTABLES)

@@ -11,7 +11,7 @@
 
 int main(int argc, char** argv) {
 
-    uint64_t niter = 100000;
+    uint64_t niter = 900 * 3600 * 2;
     char *challenge_file = "challenges/LW_1280_1";
     uint64_t sigma = 18;
     uint64_t radix_width = 9;
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
     printf("# Mode: release\n");
 #endif
 
-#if defined(AVX512_ENABLED)
+#if defined(__AVX512DQ__) && defined(__AVX512F__) && defined(__AVX512VL__)
     printf("# AVX512: enabled\n");
 #else
     printf("# AVX512: disabled\n");

@@ -7,7 +7,7 @@ endif
 
 
 CC=gcc
-INCDIRS=-I.
+INCDIRS=-Im4ri
 LDFLAGS=
 EXECUTABLES=main_stern main_prange
 

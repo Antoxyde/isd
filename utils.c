@@ -142,7 +142,7 @@ void printbin(uint64_t* a, size_t nbits) {
 }
 
 
-mzd_t* reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t p) {
+mzd_t* stern_reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t p) {
 
     mzd_t* ident = mzd_init(1, 640 /* k */);
     for (uint64_t i = 0; i < 2*p; i++)
@@ -163,6 +163,29 @@ mzd_t* reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, ui
     mzd_free(min_cw_full);
     mzd_free(min_cw_m);
     mzd_free(ident);
+
+    return result;
+}
+
+mzd_t* prange_reconstruct_cw(rci_t row_min_cw, rci_t* column_perms, mzd_t* min_cw) {
+
+    // Since Glw contains only the redundant part of the matrix for the computation
+    // we have to concat the identity part back again to get the correct codeword
+    mzd_t* ident = mzd_init(1, 640 /* k */);
+
+    // row_min_cw contain the row number from which min_cw has been taken
+    mzd_write_bit(ident, 0, row_min_cw, 1);
+    mzd_t* min_cw_full = mzd_concat(NULL, ident, min_cw);
+
+    mzd_t* result = mzd_copy(NULL, min_cw_full);
+    for (int i = 0; i < 1280 /* n */; i++) {
+        if (i != column_perms[i]) {
+            mzd_write_bit(result, 0, column_perms[i], mzd_read_bit(min_cw_full, 0, i));
+        }
+    }
+
+    mzd_free(ident);
+    mzd_free(min_cw_full);
 
     return result;
 }

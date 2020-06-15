@@ -256,7 +256,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                         memcpy(min_cw, linear_comb_next, 80);
                         memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
 
-                        mzd_t* cw = reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
+                        mzd_t* cw = stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
                         print_cw(cw);
                         mzd_free(cw);
 
@@ -269,7 +269,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
     printf("# Average collisions/iter : %.3f\n", (double)nb_collision/(double)niter);
 
-    mzd_t* result =  reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
+    mzd_t* result =  stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
 
     mzd_free(Gtemp);
     mzd_free(Glw);

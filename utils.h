@@ -36,7 +36,8 @@ uint64_t uxor(uint64_t*a, uint64_t*b , size_t nbits);
 
 void printbin(uint64_t* a, size_t nbits);
 
-mzd_t* reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t p);
+mzd_t* stern_reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t p);
+mzd_t* prange_reconstruct_cw(rci_t row_min_cw, rci_t* column_perms, mzd_t* min_cw);
 
 #endif
 

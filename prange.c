@@ -115,13 +115,18 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
                     current = clock();
                     double elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
                     printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt);
-                    fflush(stdout);
                     min_wt = wt;
 
                     // Save our new lowest row and all the permutations made until now
                     row_min_cw = j;
                     mzd_copy_row(min_cw, 0, Glw, j);
                     memcpy(column_perms_copy, column_perms, 1280 /* n */ * sizeof(rci_t));
+
+                    mzd_t* cw = prange_reconstruct_cw(row_min_cw, column_perms_copy, min_cw);
+                    print_cw(cw);
+                    mzd_free(cw),
+                    fflush(stdout);
+
                 }
             }
         }
@@ -136,28 +141,11 @@ mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
 
     }
 
-    // Since Glw contains only the redundant part of the matrix for the computation
-    // we have to concat the identity part back again to get the correct codeword
-    mzd_t* ident = mzd_init(1, n/2);
-
-    // row_min_cw contain the row number from which min_cw has been taken
-    mzd_write_bit(ident, 0, row_min_cw, 1);
-    mzd_t* min_cw_full = mzd_concat(NULL, ident, min_cw);
-
-    // Since we applied many columns permutations, which were all logged in perms
-    // we have to permute back to get a valid codeword
-    mzd_t* result = mzd_copy(NULL, min_cw_full);
-    for (i = 0; i < n; i++) {
-        if (i != column_perms_copy[i]) {
-            mzd_write_bit(result, 0, column_perms_copy[i], mzd_read_bit(min_cw_full, 0, i));
-        }
-    }
+    mzd_t* result = prange_reconstruct_cw(row_min_cw, column_perms_copy, min_cw);
 
     mzd_free(Gtemp);
     mzd_free(Glw);
     mzd_free(min_cw);
-    mzd_free(min_cw_full);
-    mzd_free(ident);
 
     free(column_perms);
     free(column_perms_copy);

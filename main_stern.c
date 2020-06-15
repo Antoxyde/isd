@@ -11,7 +11,7 @@
 
 int main(int argc, char** argv) {
 
-    uint64_t niter = 900 * 3600 * 2;
+    uint64_t niter = 1000;
     char *challenge_file = "challenges/LW_1280_1";
     uint64_t sigma = 18;
     uint64_t radix_width = 9;
@@ -81,12 +81,10 @@ int main(int argc, char** argv) {
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
 
-    printf("# Weight: %ld\n", popcnt(mzd_first_row(min_cw), n/8 + (n % 8 != 0)));
-    printf("# Verification: %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
+    printf("# Sanity check: %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
     printf("# Total running time: %.3fs\n", time_elapsed);
     printf("# Iter/s: %.3f\n", ((double)niter)/time_elapsed);
 
-    print_cw(min_cw);
     mzd_free(min_cw);
     mzd_free(G);
     mzd_free(H);

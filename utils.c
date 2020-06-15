@@ -90,10 +90,10 @@ int left_is_identity(const mzd_t* M) {
 }
 
 void print_cw(mzd_t* cw) {
-    printf("# Cw = ");
     for (int i = 0; i < cw->ncols; i++) printf(mzd_read_bit(cw, 0, i) ? "1" : "0");
     printf("\n");
 }
+
 
 
 void rref_to_systematic(mzd_t* M, rci_t* perms) {
@@ -142,4 +142,27 @@ void printbin(uint64_t* a, size_t nbits) {
 }
 
 
+mzd_t* reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t p) {
 
+    mzd_t* ident = mzd_init(1, 640 /* k */);
+    for (uint64_t i = 0; i < 2*p; i++)
+        mzd_write_bit(ident, 0, min_comb[i], 1);
+
+    mzd_t* min_cw_m = mzd_init(1, 640 /* k */);
+    memcpy(mzd_first_row(min_cw_m), min_cw, 80);
+
+    mzd_t* min_cw_full = mzd_concat(NULL, ident, min_cw_m);
+
+    mzd_t* result = mzd_copy(NULL, min_cw_full);
+    for (rci_t i = 0; i < 1280 /* n */; i++) {
+        if (i != column_perms[i]) {
+            mzd_write_bit(result, 0, column_perms[i], mzd_read_bit(min_cw_full, 0, i));
+        }
+    }
+
+    mzd_free(min_cw_full);
+    mzd_free(min_cw_m);
+    mzd_free(ident);
+
+    return result;
+}

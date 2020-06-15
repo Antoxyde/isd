@@ -255,36 +255,24 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
                         memcpy(min_cw, linear_comb_next, 80);
                         memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
+
+                        mzd_t* cw = reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
+                        print_cw(cw);
+                        mzd_free(cw);
+
+                        fflush(stdout);
                     }
                 }
             }
         }
     }
 
-    // Reconstruct the codeword by concatenating the identity and unpermuting the columns
-    mzd_t* ident = mzd_init(1, k);
-    for (int i = 0; i < 2*p; i++)
-        mzd_write_bit(ident, 0, min_comb[i], 1);
+    printf("# Average collisions/iter : %.3f\n", (double)nb_collision/(double)niter);
 
-    mzd_t* min_cw_m = mzd_init(1, k);
-    memcpy(mzd_first_row(min_cw_m), min_cw, 80);
-
-    mzd_t* min_cw_full = mzd_concat(NULL, ident, min_cw_m);
-
-    mzd_t* result = mzd_copy(NULL, min_cw_full);
-    for (i = 0; i < n; i++) {
-        if (i != column_perms_copy[i]) {
-            mzd_write_bit(result, 0, column_perms_copy[i], mzd_read_bit(min_cw_full, 0, i));
-        }
-    }
-
-    printf("# average collisions/iter : %.3f\n", (double)nb_collision/(double)niter);
+    mzd_t* result =  reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
 
     mzd_free(Gtemp);
     mzd_free(Glw);
-    mzd_free(min_cw_full);
-    mzd_free(min_cw_m);
-    mzd_free(ident);
 
     free(min_cw);
     free(linear_comb);

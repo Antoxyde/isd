@@ -14,7 +14,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0, nb_collision = 0;
+    uint64_t p = 2, iter = 0;
     rci_t n = G->ncols, comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     rci_t k = n/2; // number of rows in G
 
@@ -25,6 +25,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 #if defined(AVX512_ENABLED)
     uint64_t mask[10];
     memset(mask, 0, 80);
+#endif
+
+#if defined(DEBUG)
+    uint64_t nb_collision = 0, nb_collision_delta = 0, nb_collision_delta_current = 0;
 #endif
 
     uint64_t* word = NULL;
@@ -208,13 +212,22 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
 
 #endif
 
+#if defined(DEBUG)
+                nb_collision_delta += nb_collision_delta_current;
+                nb_collision_delta_current  = 0;
+#endif
                 while (lc_index < nelem && lc_tab[lc_index].delta == delta) {
 
                     comb1[0] = lc_tab[lc_index].index1;
                     comb1[1] = lc_tab[lc_index].index2;
 
-                    nb_collision++;
                     lc_index++;
+
+#if defined(DEBUG)
+                    nb_collision++;
+                    nb_collision_delta_current = 1;
+#endif
+
 
 #if defined(AVX512_ENABLED)
                     void* row1 = Glw->rows[comb1[0]];
@@ -267,7 +280,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
         }
     }
 
-    printf("# Average collisions/iter : %.3f\n", (double)nb_collision/(double)niter);
+#ifdef DEBUG
+    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/(double)niter);
+    printf("# Average number of collision / delta with at least 1 collision: %.3f\n", (double)nb_collision/(double)nb_collision_delta);
+    printf("# Average number of delta with at least 1 collision / nb delta : %3.f / %u\n", (double)nb_collision_delta/(double)niter, nelem);
+#endif
 
     mzd_t* result =  stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
 
@@ -310,8 +327,7 @@ lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint3
 
     for (i = Tlen - 1; i >= 0; i--) {
         uint32_t val = (T[i].delta >> pos) & mask;
-        Aux[val]--;
-        Ts[ Aux[val]] = T[i];
+        Aux[val]--; Ts[ Aux[val]] = T[i];
     }
 
     return Ts;

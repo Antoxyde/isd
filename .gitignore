@@ -2,5 +2,6 @@
 tags
 *.o
 gmon.out
-callgrind*
+callgrind.out.*
+cachegrind.out.*
 notes.md

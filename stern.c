@@ -164,7 +164,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         // From here we have a new iset, we can start a Stern iteration
         uint64_t delta, lc_index = 0;
 
-        // Gen all the LC from the first k/2 rows
+        // 1st pass, gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < 320 /* n/4 */; comb1[0]++) {
 
             // Get the first sigma bits of the first row
@@ -177,14 +177,46 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 // Compute the first sigma bits of the LC of rows 1 & 2
                 delta = (row1 ^ row2) & sigmask;
 
-                lc_tabf_first[lc_index].index1 = comb1[0];
+                lc_tab_first[lc_index].index1 = comb1[0];
                 lc_tab_first[lc_index].index2 = comb1[1];
                 lc_tab_first[lc_index].delta = delta;
+                collision_tab_first[delta] = 1;
                 lc_index++;
-
-                delta[
             }
         }
+
+        nb_collisions_first = lc_index;
+        lc_index = 0;
+
+        // 2nd pass, gen all the LC from the k/2 to k rows
+        for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
+
+            // Get the first sigma bits of the first row
+            uint64_t row1 = ((uint64_t*)Glw->rows[comb2[0]])[0];
+
+            for (comb2[1] = comb2[0] + 1; comb2[1] < 640 /* n/2 */; comb2[1]++) {
+
+                uint64_t row2 = ((uint64_t*)Glw->rows[comb2[1]])[0];
+
+                // Compute the first sigma bits of the LC of rows 1 & 2
+                delta = (row1 ^ row2) & sigmask;
+
+                if (collision_tab_first[delta]) {
+
+                    lc_tab_second[lc_index].index1 = comb2[0];
+                    lc_tab_second[lc_index].index2 = comb2[1];
+                    lc_tab_second[lc_index].delta = delta;
+                    collision_tab_second[delta] = 1;
+                    lc_index++;
+                }
+            }
+        }
+
+        // 3rd pass, copy all the element that will actually collide in a new array, and then sort it
+
+
+
+
 
         //qsort(lc_tab, nelem, sizeof(lc), &compare_lc);
         lc_tab_sorted = radixsort(lc_tab, lc_tab_sorted, nelem, radix_width, radix_nlen, aux);

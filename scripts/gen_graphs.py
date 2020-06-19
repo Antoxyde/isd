@@ -24,11 +24,17 @@ plt.ylim(220,260)
 plt.show()
 
 for runfile in glob.glob("runs/prange_48_*"):
-    plt.plot(*load_run(runfile))
+    plt.plot(*load_run(runfile), 'C1')
+
+for runfile in glob.glob("runs/stern_48_*"):
+    plt.plot(*load_run(runfile), 'C2')
+
+#plt.legend([a, b],["Prange", "Stern"])
 
 plt.xlabel("Time in second")
 plt.ylabel("Hamming weigth")
-plt.title("Prange runs (48h each)")
+plt.title("Prange and Stern runs (48h each)")
+
 plt.ylim(220,260)
 plt.show()
 

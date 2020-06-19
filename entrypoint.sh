@@ -1,6 +1,7 @@
 #!/bin/bash
 
 ninstances=16
+nrun="2"
 fname="scripts/runs/stern_48"
 
 #case "$1" in
@@ -15,7 +16,7 @@ prog="main_stern"
 
 
 for i in $(seq 1 $(( ninstances - 1 ))); do
-    (./${prog} > "${fname}_${i}") &
+    (./${prog} > "${fname}_${i}_${nrun}") &
 done
 
 sleep 10

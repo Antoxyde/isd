@@ -52,11 +52,16 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     // Big array which contains all the linear combinations
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
-    lc* lc_tab = (lc*)malloc(nelem * sizeof(lc));
-    lc* lc_tab_sorted = (lc*)malloc(nelem * sizeof(lc));
+    lc* lc_tab_first = (lc*)malloc(nelem * sizeof(lc));
+    lc* lc_second = (lc*)malloc(nelem * sizeof(lc));
+    lc* lc_tab_first_sorted = (lc*)malloc(nelem * sizeof(lc));
+    lc* lc_tab_second_sorted = (lc*)malloc(nelem * sizeof(lc));
 
-    lc* lc_tab_save = lc_tab;
-    lc* lc_tab_sorted_save = lc_tab_sorted;
+    lc* lc_tab_first_save = lc_tab_first;
+    lc* lc_tab_first_sorted_save = lc_tab_first_sorted;
+    lc* lc_tab_second_save = lc_tab_second;
+    lc* lc_tab_second_sorted_save = lc_tab_second_sorted;
+
 
     uint32_t nb_keys = 1UL << sigma;
     uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * nb_keys);
@@ -69,9 +74,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     while (1) {
 
-        // If we call radixsort with an odd nlen, lc_tab_sorted will point to lc_tab
-        lc_tab_sorted = lc_tab_sorted_save;
-        lc_tab = lc_tab_save;
+        // radix_sort can mess up pointers so we have to restore them at each iteration
+        lc_tab_first_sorted = lc_tab_first_sorted_save;
+        lc_first_tab = lc_tab_first_save;
+        lc_tab_second_sorted = lc_tab_second_sorted_save;
+        lc_tabsecond_sorted = lc_tab_second_save;
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         lambda = xoshiro256starstar_random() % k;
@@ -159,9 +166,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 // Compute the first sigma bits of the LC of rows 1 & 2
                 delta = (row1 ^ row2) & sigmask;
 
-                lc_tab[lc_index].index1 = comb1[0];
-                lc_tab[lc_index].index2 = comb1[1];
-                lc_tab[lc_index].delta = delta;
+                lc_tabf_first[lc_index].index1 = comb1[0];
+                lc_tab_first[lc_index].index2 = comb1[1];
+                lc_tab_first[lc_index].delta = delta;
                 lc_index++;
             }
         }

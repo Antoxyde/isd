@@ -53,9 +53,13 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     // Big array which contains all the linear combinations
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
     lc* lc_tab_first = (lc*)malloc(nelem * sizeof(lc));
-    lc* lc_second = (lc*)malloc(nelem * sizeof(lc));
+    lc* lc_tab_second = (lc*)malloc(nelem * sizeof(lc));
     lc* lc_tab_first_sorted = (lc*)malloc(nelem * sizeof(lc));
     lc* lc_tab_second_sorted = (lc*)malloc(nelem * sizeof(lc));
+    CHECK_MALLOC(lc_tab_first);
+    CHECK_MALLOC(lc_tab_second);
+    CHECK_MALLOC(lc_tab_first_sorted);
+    CHECK_MALLOC(lc_tab_second_sorted);
 
     lc* lc_tab_first_save = lc_tab_first;
     lc* lc_tab_first_sorted_save = lc_tab_first_sorted;
@@ -71,6 +75,13 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     // Radix sort offsets array
     uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
+
+    // Tab used to track which keys will collide
+    // TODO : we store booleans here, we can win memory by settings bits instead of bytes.
+    uint8_t* collision_tab_first = (uint8_t*)malloc(nb_keys * sizeof(uint8_t));
+    uint8_t* collision_tab_second = (uint8_t*)malloc(nb_keys * sizeof(uint8_t));
+    CHECK_MALLOC(collision_tab_first);
+    CHECK_MALLOC(collision_tab_second);
 
     while (1) {
 
@@ -170,6 +181,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 lc_tab_first[lc_index].index2 = comb1[1];
                 lc_tab_first[lc_index].delta = delta;
                 lc_index++;
+
+                delta[
             }
         }
 

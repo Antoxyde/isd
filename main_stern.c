@@ -11,7 +11,7 @@
 
 int main(int argc, char** argv) {
 
-    uint64_t niter = 1000;
+    uint64_t time_sec = 60;
     char *challenge_file = "challenges/LW_1280_1";
     uint64_t sigma = 18;
     uint64_t radix_width = 9;
@@ -21,12 +21,12 @@ int main(int argc, char** argv) {
 
         if (argc == 6) {
             challenge_file = argv[1];
-            niter = atoi(argv[2]);
+            time_sec = atoi(argv[2]);
             sigma = atoi(argv[3]);
             radix_width = atoi(argv[4]);
             radix_nlen = atoi(argv[5]);
         } else {
-            printf("Usage : %s <challenge file> <niter> <sigma> <radix width> <radix nlen>\n", argv[0]);
+            printf("Usage : %s <challenge file> <time_sec> <sigma> <radix width> <radix nlen>\n", argv[0]);
             return 0;
         }
     }
@@ -50,14 +50,11 @@ int main(int argc, char** argv) {
     printf("# Radix width: %lu\n", radix_width);
     printf("# Radix nlen: %lu\n", radix_nlen);
     printf("# Challenge file: %s\n", challenge_file);
-    printf("# Niter: %lu\n", niter);
+    printf("# Time (s): %lu\n", time_sec);
 
     //uint64_t seed[4] = {1,2,3,4};
     //xoshiro256starstar_random_set(seed);
 
-
-    clock_t start, stop;
-    double time_elapsed;
 
     uint32_t n = 1280; // Size of the instance
     mzd_t* G = mzd_init(n/2, n);
@@ -67,23 +64,15 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    start = clock();
-
-    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, niter, sigma, radix_width, radix_nlen);
+    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, time_sec, sigma, radix_width, radix_nlen);
 
     if (!min_cw) {
         printf("failed, leaving.\n");
         return 0;
     }
 
-    stop = clock();
-    time_elapsed = ((double)(stop - start))/CLOCKS_PER_SEC;
-
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
-
     printf("# Sanity check: %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
-    printf("# Total running time: %.3fs\n", time_elapsed);
-    printf("# Iter/s: %.3f\n", ((double)niter)/time_elapsed);
 
     mzd_free(min_cw);
     mzd_free(G);

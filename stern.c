@@ -7,7 +7,7 @@
 
 
 
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen) {
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen) {
 
     // time mesuring stuff
     clock_t start = clock(), current;
@@ -67,7 +67,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
     // Radix sort offsets array
     uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
 
-    for (iter = 0; iter < niter; iter++) {
+    while (1) {
 
         // If we call radixsort with an odd nlen, lc_tab_sorted will point to lc_tab
         lc_tab_sorted = lc_tab_sorted_save;
@@ -281,14 +281,25 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sig
                     }
                 }
             }
+
         }
+
+        iter++;
+        current = clock();
+        elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+        if (elapsed > time_sec) {
+            break;
+        }
+
     }
 
 #ifdef DEBUG
-    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/(double)niter);
+    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/(double)iter);
     printf("# Average number of collision / delta with at least 1 collision: %.3f\n", (double)nb_collision/(double)nb_collision_delta);
-    printf("# Average number of delta with at least 1 collision / nb delta : %3.f / %u\n", (double)nb_collision_delta/(double)niter, nelem);
+    printf("# Average number of delta with at least 1 collision / nb delta : %3.f / %u\n", (double)nb_collision_delta/(double)iter, nelem);
 #endif
+    printf("# Total iter done : %lu\n", iter);
+    printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);
 
     mzd_t* result =  stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
 

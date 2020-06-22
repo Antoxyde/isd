@@ -224,38 +224,42 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
             }
         }
 
-
         // Save the size of each lc_tab_first elements and reset lc_indexes
         memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint32_t));
         memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         // 2nd pass, gen all the LC from the k/2 to k rows but store
-        // only the ones which will collides with at least 1 element from lc_tab_first
+        // only the ones that will collides with at least 1 element from lc_tab_first
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
 
             // Get the first sigma bits of the first row
-            uint64_t row1 = ((uint64_t*)Glw->rows[comb2[0]])[0];
+            uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
 
             for (comb2[1] = comb2[0] + 1; comb2[1] < 640 /* n/2 */; comb2[1]++) {
 
-                uint64_t row2 = ((uint64_t*)Glw->rows[comb2[1]])[0];
+                uint64_t* row2 = (uint64_t*)Glw->rows[comb2[1]];
 
-                // Compute the first sigma bits of the LC of rows 1 & 2
-                delta = (row1 ^ row2) & sigmask;
+                for (mwin = 0; mwin < m; mwin++) {
 
-                if (collision_tab_first[delta]) {
+                    // Compute the first sigma bits of the LC of rows 1 & 2
+                    delta = (row1[mwin] ^ row2[mwin]) & sigmask;
 
-                    lc_tab_second[lc_index].index1 = comb2[0];
-                    lc_tab_second[lc_index].index2 = comb2[1];
-                    lc_tab_second[lc_index].delta = delta;
-                    collision_tab_second[delta] = 1;
-                    lc_index++;
+                    if (collision_tab_first[delta]) {
+
+                        lc_tab_second[lc_indexes[mwin]].index1 = comb2[0];
+                        lc_tab_second[lc_indexes[mwin]].index2 = comb2[1];
+                        lc_tab_second[lc_indexes[mwin]].delta = delta;
+
+                        STERN_SET_ONE(collision_tab_second, delta);
+                        lc_indexes[mwin]++;
+                    }
                 }
             }
         }
 
-        nb_collisions_second = lc_index;
-        lc_index = 0;
+        // Save the size of each lc_tab_first elements and reset lc_indexes
+        memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint32_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         // 3rd pass, copy all the element of fist tab that will actually collide in a new array
         for (uint64_t i = 0; i < nb_collisions_first; i++) {

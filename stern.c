@@ -5,7 +5,8 @@
 #include <time.h>
 #include <immintrin.h>
 
-
+#define STERN_GET(tab, index) ((tab[index >> 6]) >> (index & 0x3f)) & 1
+#define STERN_SET_ONE(tab, index) (tab[index >> 6]) |= (1ULL << (index & 0x3f))
 
 mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen) {
 
@@ -56,6 +57,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     // Number of possible dfferent values for delta
     uint32_t nb_keys = 1UL << sigma;
+    uint32_t nb_keys_bits = nb_keys / 8;
 
     uint32_t** lc_offsets = (uint32_t**)malloc(m * sizeof(uint32_t*));
     uint64_t** collisions_first_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
@@ -77,8 +79,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     for (mwin = 0; mwin < m; mwin++) {
         lc_offsets[mwin] = (uint32_t*)malloc(nb_keys * sizeof(uint32_t));
-        collisions_first_pass[mwin] = (uint64_t*)malloc(nb_keys / 8);
-        collisions_second_pass[mwin] = (uint64_t*)malloc(nb_keys / 8);
+        collisions_first_pass[mwin] = (uint64_t*)malloc(nb_keys_bits);
+        collisions_second_pass[mwin] = (uint64_t*)malloc(nb_keys_bits);
         lc_tab_first[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_second[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_third[mwin] = (lc*)malloc(nelem * sizeof(lc));
@@ -95,23 +97,28 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         CHECK_MALLOC(lc_tab_third_sorted[mwin]);
     }
 
+    // These arrays hold the size of their corresponding lc_tab
+    uint32_t* lc_tab_first_size = (uint32_t*) malloc(m * sizeof(uint32_t));
+    uint32_t* lc_tab_second_size = (uint32_t*) malloc(m * sizeof(uint32_t));
+    uint32_t* lc_tab_third_size = (uint32_t*) malloc(m * sizeof(uint32_t));
+    uint32_t* lc_indexes = (uint64_t*)malloc(m * sizeof(uint32_t));
+    CHECK_MALLOC(lc_tab_first_size);
+    CHECK_MALLOC(lc_tab_second_size);
+    CHECK_MALLOC(lc_tab_third_size);
+    CHECK_MALLOC(lc_indexes);
+
     // Generic pointer on the sorted array we want to work with
     lc* lc_tab_sorted = NULL;
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
 
-    // Radix sort offsets array
+    // Radixsort offsets array
     uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
 
     while (1) {
 
-        // Radix_sort can mess up the pointers so we have to restore them at each iteration
-        lc_tab_first = lc_tab_first_save;
-        lc_tab_second = lc_tab_second_save;
-        lc_tabs_second_sorted = lc_tab_second_save;
-        lc_tab_third = lc_tab_third_save;
-        lc_tab_third_sorted = lc_tab_third_sorted_save;
+        // TODO: make c iterations here
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         lambda = xoshiro256starstar_random() % k;
@@ -140,8 +147,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         // Clear the bit at the intersection of the lambda'th row and the mu'th column
         // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row
         mzd_write_bit(Glw, lambda, mu, 0);
-
-
 
 #if defined(AVX512_ENABLED)
         void* row_lambda = Glw->rows[lambda];
@@ -183,34 +188,49 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         mask[mu/64] = 0;
 #endif
 
-        // From here we have a new iset, we can start a Stern iteration
-        uint64_t delta, lc_index = 0;
+        /* End of the Canteaut-Chabaud stuff. We now have a proper Iset to work with. */
+
+        // Reset all the stuff we will need in the iteration
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
+        for (mwin = 0; mwin < m; mwin++) {
+            memset(collisions_first_pass[mwin], 0, nb_keys_bits);
+            memset(collisions_second_pass[mwin], 0, nb_keys_bits);
+
+        }
 
         // 1st pass, gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < 320 /* n/4 */; comb1[0]++) {
 
-            // Get the first sigma bits of the first row
-            uint64_t row1 = ((uint64_t*)Glw->rows[comb1[0]])[0];
+            uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
 
             for (comb1[1] = comb1[0] + 1; comb1[1] < n/4; comb1[1]++) {
 
-                uint64_t row2 = ((uint64_t*)Glw->rows[comb1[1]])[0];
+                uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
 
-                // Compute the first sigma bits of the LC of rows 1 & 2
-                delta = (row1 ^ row2) & sigmask;
+                for (mwin = 0; mwin < m; mwin++) {
 
-                lc_tab_first[lc_index].index1 = comb1[0];
-                lc_tab_first[lc_index].index2 = comb1[1];
-                lc_tab_first[lc_index].delta = delta;
-                collision_tab_first[delta] = 1;
-                lc_index++;
+                    // Compute the first sigma bits of the LC of rows 1 & 2
+                    // on the windows mwin
+                    // TODO: SIMD xor ?
+                    delta = (row1[mwin] ^ row2[mwin]) & sigmask;
+
+                    lc_tab_first[lc_indexes[mwin]].index1 = comb1[0];
+                    lc_tab_first[lc_indexes[mwin]].index2 = comb1[1];
+                    lc_tab_first[lc_indexes[mwin]].delta = delta;
+
+                    STERN_SET_ONE(collisions_first_pass[mwin], delta);
+                    lc_indexes[mwin]++;
+                }
             }
         }
 
-        nb_collisions_first = lc_index;
-        lc_index = 0;
 
-        // 2nd pass, gen all the LC from the k/2 to k rows
+        // Save the size of each lc_tab_first elements and reset lc_indexes
+        memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint32_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
+
+        // 2nd pass, gen all the LC from the k/2 to k rows but store
+        // only the ones which will collides with at least 1 element from lc_tab_first
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
 
             // Get the first sigma bits of the first row

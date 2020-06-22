@@ -50,25 +50,53 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     rref_to_systematic(Gtemp, column_perms);
     mzd_t* Glw = mzd_submatrix(NULL, Gtemp, 0, k, k, n);
 
-    // Big array which contains all the linear combinations
+    // nelem is the max number of LCs we will make
+    // so its an upper bound for the size of each array
     uint32_t nelem = ((n/4 * (n/4 - 1)) /2);
-    lc* lc_tab_first = (lc*)malloc(nelem * sizeof(lc));
-    lc* lc_tab_second = (lc*)malloc(nelem * sizeof(lc));
-    lc* lc_tab_first_sorted = (lc*)malloc(nelem * sizeof(lc));
-    lc* lc_tab_second_sorted = (lc*)malloc(nelem * sizeof(lc));
+
+    // Number of possible dfferent values for delta
+    uint32_t nb_keys = 1UL << sigma;
+
+    uint32_t** lc_offsets = (uint32_t**)malloc(m * sizeof(uint32_t*));
+    uint64_t** collisions_first_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
+    uint64_t** collisions_second_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
+    lc** lc_tab_first = (lc**)malloc(m * sizeof(lc*));
+    lc** lc_tab_second = (lc**)malloc(m * sizeof(lc*));
+    lc** lc_tab_third = (lc**)malloc(m * sizeof(lc*));
+    lc** lc_tab_second_sorted = (lc**)malloc(m * sizeof(lc*));
+    lc** lc_tab_third_sorted = (lc**)malloc(m * sizeof(lc*));
+
+    CHECK_MALLOC(lc_offsets);
+    CHECK_MALLOC(collisions_first_pass);
+    CHECK_MALLOC(collisions_second_pass);
     CHECK_MALLOC(lc_tab_first);
     CHECK_MALLOC(lc_tab_second);
-    CHECK_MALLOC(lc_tab_first_sorted);
+    CHECK_MALLOC(lc_tab_third);
     CHECK_MALLOC(lc_tab_second_sorted);
+    CHECK_MALLOC(lc_tab_third_sorted);
 
-    lc* lc_tab_first_save = lc_tab_first;
-    lc* lc_tab_first_sorted_save = lc_tab_first_sorted;
-    lc* lc_tab_second_save = lc_tab_second;
-    lc* lc_tab_second_sorted_save = lc_tab_second_sorted;
+    for (mwin = 0; mwin < m; mwin++) {
+        lc_offsets[mwin] = (uint32_t*)malloc(nb_keys * sizeof(uint32_t));
+        collisions_first_pass[mwin] = (uint64_t*)malloc(nb_keys / 8);
+        collisions_second_pass[mwin] = (uint64_t*)malloc(nb_keys / 8);
+        lc_tab_first[mwin] = (lc*)malloc(nelem * sizeof(lc));
+        lc_tab_second[mwin] = (lc*)malloc(nelem * sizeof(lc));
+        lc_tab_third[mwin] = (lc*)malloc(nelem * sizeof(lc));
+        lc_tab_second_sorted[mwin] = (lc*)malloc(nelem * sizeof(lc));
+        lc_tab_third_sorted[mwin] = (lc*)malloc(nelem * sizeof(lc));
 
+        CHECK_MALLOC(lc_offsets[mwin]);
+        CHECK_MALLOC(collisions_first_pass);
+        CHECK_MALLOC(collisions_second_pass);
+        CHECK_MALLOC(lc_tab_first[mwin]);
+        CHECK_MALLOC(lc_tab_second[mwin]);
+        CHECK_MALLOC(lc_tab_second_sorted[mwin]);
+        CHECK_MALLOC(lc_tab_third[mwin]);
+        CHECK_MALLOC(lc_tab_third_sorted[mwin]);
+    }
 
-    uint32_t nb_keys = 1UL << sigma;
-    uint32_t* lc_offsets = (uint32_t*)malloc(sizeof(uint32_t) * nb_keys);
+    // Generic pointer on the sorted array we want to work with
+    lc* lc_tab_sorted = NULL;
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
@@ -76,20 +104,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     // Radix sort offsets array
     uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
 
-    // Tab used to track which keys will collide
-    // TODO : we store booleans here, we can win memory by settings bits instead of bytes.
-    uint8_t* collision_tab_first = (uint8_t*)malloc(nb_keys * sizeof(uint8_t));
-    uint8_t* collision_tab_second = (uint8_t*)malloc(nb_keys * sizeof(uint8_t));
-    CHECK_MALLOC(collision_tab_first);
-    CHECK_MALLOC(collision_tab_second);
-
     while (1) {
 
-        // radix_sort can mess up pointers so we have to restore them at each iteration
-        lc_tab_first_sorted = lc_tab_first_sorted_save;
-        lc_first_tab = lc_tab_first_save;
-        lc_tab_second_sorted = lc_tab_second_sorted_save;
-        lc_tabsecond_sorted = lc_tab_second_save;
+        // Radix_sort can mess up the pointers so we have to restore them at each iteration
+        lc_tab_first = lc_tab_first_save;
+        lc_tab_second = lc_tab_second_save;
+        lc_tabs_second_sorted = lc_tab_second_save;
+        lc_tab_third = lc_tab_third_save;
+        lc_tab_third_sorted = lc_tab_third_sorted_save;
 
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         lambda = xoshiro256starstar_random() % k;
@@ -212,16 +234,30 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
             }
         }
 
-        // 3rd pass, copy all the element that will actually collide in a new array, and then sort it
-
-
-
-
-
-        //qsort(lc_tab, nelem, sizeof(lc), &compare_lc);
-        lc_tab_sorted = radixsort(lc_tab, lc_tab_sorted, nelem, radix_width, radix_nlen, aux);
-
+        nb_collisions_second = lc_index;
         lc_index = 0;
+
+        // 3rd pass, copy all the element of fist tab that will actually collide in a new array
+        for (uint64_t i = 0; i < nb_collisions_first; i++) {
+            uint64_t d = lc_tab_first[lc_index].delta;
+            if (collision_tab_second[d]) {
+                memcpy(lc_tab_third[lc_index], lc_tab_first[i], sizeof(lc));
+                lc_index++;
+            }
+        }
+
+        nb_collisions_third = lc_index;
+        lc_index = 0;
+
+        // From here, lc_tab_third[:nb_collsions_third] and lc_tab_second[:nb_collisions_second]
+        // contains the LCs that WILL collide.
+
+        lc_tab_third_sorted = radixsort(lc_tab_third, lc_tab_third_sorted, nb_collisions_third, radix_width, radix_nlen, aux);
+        lc_tab_second_sorted = radixsort(lc_tab_second, lc_tab_second_sorted, nb_collisions_second, radix_width, radix_nlen, aux);
+
+
+
+
 
         memset(lc_offsets, 0, sizeof(uint32_t) * nb_keys);
 

@@ -59,7 +59,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     uint32_t nb_keys = 1UL << sigma;
     uint32_t nb_keys_bits = nb_keys / 8;
 
-    uint32_t** lc_offsets = (uint32_t**)malloc(m * sizeof(uint32_t*));
     uint64_t** collisions_first_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
     uint64_t** collisions_second_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
     lc** lc_tab_first = (lc**)malloc(m * sizeof(lc*));
@@ -68,7 +67,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     lc** lc_tab_second_sorted = (lc**)malloc(m * sizeof(lc*));
     lc** lc_tab_third_sorted = (lc**)malloc(m * sizeof(lc*));
 
-    CHECK_MALLOC(lc_offsets);
     CHECK_MALLOC(collisions_first_pass);
     CHECK_MALLOC(collisions_second_pass);
     CHECK_MALLOC(lc_tab_first);
@@ -78,7 +76,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     CHECK_MALLOC(lc_tab_third_sorted);
 
     for (mwin = 0; mwin < m; mwin++) {
-        lc_offsets[mwin] = (uint32_t*)malloc(nb_keys * sizeof(uint32_t));
         collisions_first_pass[mwin] = (uint64_t*)malloc(nb_keys_bits);
         collisions_second_pass[mwin] = (uint64_t*)malloc(nb_keys_bits);
         lc_tab_first[mwin] = (lc*)malloc(nelem * sizeof(lc));
@@ -87,7 +84,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         lc_tab_second_sorted[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_third_sorted[mwin] = (lc*)malloc(nelem * sizeof(lc));
 
-        CHECK_MALLOC(lc_offsets[mwin]);
         CHECK_MALLOC(collisions_first_pass);
         CHECK_MALLOC(collisions_second_pass);
         CHECK_MALLOC(lc_tab_first[mwin]);
@@ -107,8 +103,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     CHECK_MALLOC(lc_tab_third_size);
     CHECK_MALLOC(lc_indexes);
 
-    // Generic pointer on the sorted array we want to work with
-    lc* lc_tab_sorted = NULL;
+    // Generic alias on the sorted arrays
+    lc* lc_tab_alias_second = NULL;
+    lc* lc_tab_alias_third_sorted = NULL;
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
@@ -120,6 +117,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // TODO: make c iterations here
 
+        /* Start of the Canteaut-Chabaud stuff, to derive a new information set. */
         // Find lambda, mu s.t. Glw[lambda, mu] == 1
         lambda = xoshiro256starstar_random() % k;
         word = Glw->rows[lambda];
@@ -214,9 +212,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     // TODO: SIMD xor ?
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
 
-                    lc_tab_first[lc_indexes[mwin]].index1 = comb1[0];
-                    lc_tab_first[lc_indexes[mwin]].index2 = comb1[1];
-                    lc_tab_first[lc_indexes[mwin]].delta = delta;
+                    lc_tab_first[mwin][lc_indexes[mwin]].index1 = comb1[0];
+                    lc_tab_first[mwin][lc_indexes[mwin]].index2 = comb1[1];
+                    lc_tab_first[mwin][lc_indexes[mwin]].delta = delta;
 
                     STERN_SET_ONE(collisions_first_pass[mwin], delta);
                     lc_indexes[mwin]++;
@@ -246,11 +244,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
                     if (collision_tab_first[delta]) {
 
-                        lc_tab_second[lc_indexes[mwin]].index1 = comb2[0];
-                        lc_tab_second[lc_indexes[mwin]].index2 = comb2[1];
-                        lc_tab_second[lc_indexes[mwin]].delta = delta;
+                        lc_tab_second[mwin][lc_indexes[mwin]].index1 = comb2[0];
+                        lc_tab_second[mwin][lc_indexes[mwin]].index2 = comb2[1];
+                        lc_tab_second[mwin][lc_indexes[mwin]].delta = delta;
 
-                        STERN_SET_ONE(collision_tab_second, delta);
+                        STERN_SET_ONE(collision_second_pass[mwin], delta);
                         lc_indexes[mwin]++;
                     }
                 }
@@ -258,39 +256,34 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         }
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
-        memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint32_t));
+        memcpy(lc_tab_second_size, lc_indexes, m * sizeof(uint32_t));
         memset(lc_indexes, 0, m * sizeof(uint64_t));
 
-        // 3rd pass, copy all the element of fist tab that will actually collide in a new array
-        for (uint64_t i = 0; i < nb_collisions_first; i++) {
-            uint64_t d = lc_tab_first[lc_index].delta;
-            if (collision_tab_second[d]) {
-                memcpy(lc_tab_third[lc_index], lc_tab_first[i], sizeof(lc));
-                lc_index++;
+        // 3rd pass, copy all the element of first tab that will actually collide in a new array
+        for (mwin = 0; mwin < m; mwin++) {
+            for (i = 0; i < lc_tab_first_size[mwin]; i++) {
+                uint64_t d = lc_tab_first[mwin][i].delta;
+                if (STERN_GET(collisions_second_pass[mwin],d)) {
+                    memcpy(lc_tab_third[mwin][lc_indexes[mwin]], lc_tab_first[mwin][i], sizeof(lc));
+                    lc_indexes[mwin]++;
+                }
             }
         }
 
-        nb_collisions_third = lc_index;
-        lc_index = 0;
+        // Save the size of each lc_tab_first elements and reset lc_indexes
+        memcpy(lc_tab_third_size, lc_indexes, m * sizeof(uint32_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
-        // From here, lc_tab_third[:nb_collsions_third] and lc_tab_second[:nb_collisions_second]
-        // contains the LCs that WILL collide.
+        /* From here, lc_tab_third[i][:lc_tab_third_size[i]] and lc_tab_second[i][:lc_tab_second_size[i]]
+        *  contains the LCs that WILL collide.
+        * So we sort em all */
 
-        lc_tab_third_sorted = radixsort(lc_tab_third, lc_tab_third_sorted, nb_collisions_third, radix_width, radix_nlen, aux);
-        lc_tab_second_sorted = radixsort(lc_tab_second, lc_tab_second_sorted, nb_collisions_second, radix_width, radix_nlen, aux);
-
-
-
-
-
-        memset(lc_offsets, 0, sizeof(uint32_t) * nb_keys);
-
-        for (lc_index = 0; lc_index < nelem; lc_index++) {
-            if (lc_offsets[lc_tab[lc_index].delta] == 0) {
-                lc_offsets[lc_tab[lc_index].delta] = lc_index;
-            }
+        for (mwin = 0; mwin < m; mwin++) {
+            lc_tab_alias_second_sorted[mwin] = radixsort(lc_tab_second[mwin], lc_tab_second_sorted[mwin], lc_tab_second_size[mwin], radix_width, radix_nlen, aux);
+            lc_tab_alias_third_sorted[mwin] = radixsort(lc_tab_third[mwin], lc_tab_third_sorted[mwin],lc_tab_third_size[mwin] , radix_width, radix_nlen, aux);
         }
 
+        // TODO : "merge" the two lists
 
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
 
@@ -308,7 +301,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 lc_index  = lc_offsets[delta];
 
                 if (lc_tab[lc_index].delta == delta) {
-
 
 #if defined(AVX512_ENABLED)
                     void* row3 = Glw->rows[comb2[0]];

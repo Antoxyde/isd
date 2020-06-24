@@ -10,14 +10,15 @@
 
 mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m, uint64_t c) {
 
-    // time mesuring stuff
+    // Time mesuring stuff
     clock_t start = clock(), current;
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
     uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0;
+
     rci_t n = G->ncols, comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
-    rci_t k = n/2; // number of rows in G
+    rci_t k = n/2; // number of rows in G, as it generates a [n, n/2] code.
 
     int min_wt = 1000, wt = 0;
     void* row = NULL;
@@ -38,10 +39,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     uint64_t* min_cw = (uint64_t*)malloc(sizeof(uint64_t) * 10);
     rci_t* column_perms_copy =  (rci_t*) malloc(sizeof(rci_t) * n);
     rci_t* column_perms = (rci_t*) malloc(sizeof(rci_t) * n);
+    CHECK_MALLOC(linear_comb);
+    CHECK_MALLOC(linear_comb_next);
+    CHECK_MALLOC(min_cw);
     CHECK_MALLOC(column_perms);
     CHECK_MALLOC(column_perms_copy);
-    CHECK_MALLOC(linear_comb);
-    CHECK_MALLOC(min_cw);
 
     for (i = 0; i < n; i++) column_perms[i] = i;
 
@@ -59,8 +61,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     uint32_t nb_keys = 1UL << sigma;
     uint32_t nb_keys_bits = nb_keys / 8;
 
+    // Used to track which combination are present
     uint64_t** collisions_first_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
     uint64_t** collisions_second_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
+
+    // Holds the linear combinations made for each pass
     lc** lc_tab_first = (lc**)malloc(m * sizeof(lc*));
     lc** lc_tab_second = (lc**)malloc(m * sizeof(lc*));
     lc** lc_tab_third = (lc**)malloc(m * sizeof(lc*));
@@ -88,8 +93,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         CHECK_MALLOC(collisions_second_pass);
         CHECK_MALLOC(lc_tab_first[mwin]);
         CHECK_MALLOC(lc_tab_second[mwin]);
-        CHECK_MALLOC(lc_tab_second_sorted[mwin]);
         CHECK_MALLOC(lc_tab_third[mwin]);
+        CHECK_MALLOC(lc_tab_second_sorted[mwin]);
         CHECK_MALLOC(lc_tab_third_sorted[mwin]);
     }
 
@@ -97,10 +102,12 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     uint32_t* lc_tab_first_size = (uint32_t*) malloc(m * sizeof(uint32_t));
     uint32_t* lc_tab_second_size = (uint32_t*) malloc(m * sizeof(uint32_t));
     uint32_t* lc_tab_third_size = (uint32_t*) malloc(m * sizeof(uint32_t));
-    uint32_t* lc_indexes = (uint32_t*)malloc(m * sizeof(uint32_t));
     CHECK_MALLOC(lc_tab_first_size);
     CHECK_MALLOC(lc_tab_second_size);
     CHECK_MALLOC(lc_tab_third_size);
+
+    // A generic holder for the current indexes
+    uint32_t* lc_indexes = (uint32_t*)malloc(m * sizeof(uint32_t));
     CHECK_MALLOC(lc_indexes);
 
     // Generic alias on the sorted arrays
@@ -118,6 +125,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         for (citer = 0; citer < c; citer++) {
 
             /* Start of the Canteaut-Chabaud stuff, to derive a new information set. */
+
             // Find lambda, mu s.t. Glw[lambda, mu] == 1
             lambda = xoshiro256starstar_random() % k;
             word = Glw->rows[lambda];
@@ -128,6 +136,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 mu = (mu + 1) % 10;
             }
 
+            // We need to take a random 1 in this word.
+            // Rotate the word by a random value and take the lowest one it has.
             j  = xoshiro256starstar_random() % 64;
             uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
             j = (j + _tzcnt_u64(val)) % 64;
@@ -232,13 +242,13 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         // only the ones that will collides with at least 1 element from lc_tab_first
         for (comb2[0] = 320 /* n/4 */; comb2[0]  < 640 /* n/2 */; comb2[0]++) {
 
-            // Get the first sigma bits of the first row
             uint64_t* row1 = (uint64_t*)Glw->rows[comb2[0]];
 
             for (comb2[1] = comb2[0] + 1; comb2[1] < 640 /* n/2 */; comb2[1]++) {
 
                 uint64_t* row2 = (uint64_t*)Glw->rows[comb2[1]];
 
+                // The `mwin`st window is the first sigma bits of the `mwin`th word of the row.
                 for (mwin = 0; mwin < m; mwin++) {
 
                     // Compute the first sigma bits of the LC of rows 1 & 2
@@ -281,18 +291,21 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         * So we sort em all. */
 
         for (mwin = 0; mwin < m; mwin++) {
-            // We have to use aliases to avoid mixing lc_tab_X and lc_tab_X_sorted pointers (radixsort returns one of them, depending on the radix_nlen parameter.)
-            lc_tab_alias_second_sorted[mwin] = radixsort(lc_tab_second[mwin], lc_tab_second_sorted[mwin], lc_tab_second_size[mwin], radix_width, radix_nlen, aux);
-            lc_tab_alias_third_sorted[mwin] = radixsort(lc_tab_third[mwin], lc_tab_third_sorted[mwin],lc_tab_third_size[mwin] , radix_width, radix_nlen, aux);
-        }
-
-
-        for (mwin = 0; mwin < m; mwin++) {
-            int index_second = 0, index_third = 0, save_index_third = 0;
 
 #if defined(DEBUG)
             collisions_list_size += lc_tab_second_size[mwin] + lc_tab_third_size[mwin];
 #endif
+
+            // We have to use aliases to avoid mixing up the lc_tab_X and lc_tab_X_sorted pointers (radixsort returns one of them, depending on the radix_nlen parameter.)
+            lc_tab_alias_second_sorted[mwin] = radixsort(lc_tab_second[mwin], lc_tab_second_sorted[mwin], lc_tab_second_size[mwin], radix_width, radix_nlen, aux);
+            lc_tab_alias_third_sorted[mwin] = radixsort(lc_tab_third[mwin], lc_tab_third_sorted[mwin],lc_tab_third_size[mwin] , radix_width, radix_nlen, aux);
+        }
+
+        // Now that everything is sorted,  we can actually match all the pairs to get the collisions.
+        for (mwin = 0; mwin < m; mwin++) {
+
+            int index_second = 0, index_third = 0, save_index_third = 0;
+
             for (index_second = 0; index_second < lc_tab_second_size[mwin]; index_second++) {
 
                 if (index_second > 0 && lc_tab_alias_second_sorted[mwin][index_second - 1].delta != lc_tab_alias_second_sorted[mwin][index_second].delta) {
@@ -303,6 +316,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 #endif
                 }
 
+                // Xor the first 2 rows
 #if defined(AVX512_ENABLED)
                 void* row1 = (void*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index1];
                 void* row2 = (void*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index2];
@@ -324,6 +338,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     nb_collisions++;
 #endif
 
+                    // Xor the two other rows and xor it to the first result
 #if defined(AVX512_ENABLED)
                     void* row3 = (void*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index1];
                     void* row4 = (void*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index2];
@@ -381,6 +396,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         iter++;
         current = clock();
         elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+
         if (elapsed > time_sec) {
             break;
         }
@@ -392,7 +408,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     printf("# Average number of delta with at least 1 collision / nb delta : %.3f / %u\n", (double)nb_collisions_delta/((double)iter * m), nelem);
     printf("# Average sorted list size : %.3f\n", (double)collisions_list_size/(2.0 * (double)iter * m));
 #endif
-    printf("# Total iter done : %lu\n", iter);
+    printf("# Total number of iterations done : %lu\n", iter);
     printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);
 
     mzd_t* result =  stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
@@ -414,7 +430,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         free(lc_tab_third[mwin]);
         free(lc_tab_second_sorted[mwin]);
         free(lc_tab_third_sorted[mwin]);
-
     }
 
     free(lc_tab_first);
@@ -437,10 +452,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     free(aux);
 
     return result;
-}
-
-int compare_lc(const void* a, const void* b) {
-    return ((lc*)a)->delta > ((lc*)b)->delta;
 }
 
 

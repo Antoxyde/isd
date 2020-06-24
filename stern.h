@@ -23,7 +23,7 @@ typedef struct lc_ {
 //  - radix_nlen: sigma/radix_width, number of iteration that radixsort will make.
 //  Output:
 //  - min_cw, the lowest codeword found
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen);
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m);
 
 int compare_lc(const void* a, const void* b);
 lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* Aux);

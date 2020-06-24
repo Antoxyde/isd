@@ -11,11 +11,12 @@
 
 int main(int argc, char** argv) {
 
-    uint64_t time_sec = 60;
+    uint64_t time_sec = 10;
     char *challenge_file = "challenges/LW_1280_1";
     uint64_t sigma = 18;
     uint64_t radix_width = 9;
     uint64_t radix_nlen = 2;
+    uint64_t m = 5;
 
     if (argc > 1) {
 
@@ -64,7 +65,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, time_sec, sigma, radix_width, radix_nlen);
+    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, time_sec, sigma, radix_width, radix_nlen, m);
 
     if (!min_cw) {
         printf("failed, leaving.\n");

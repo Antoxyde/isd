@@ -8,14 +8,14 @@
 #define STERN_GET(tab, index) ((tab[index >> 6]) >> (index & 0x3f)) & 1
 #define STERN_SET_ONE(tab, index) (tab[index >> 6]) |= (1ULL << (index & 0x3f))
 
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen) {
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m) {
 
     // time mesuring stuff
     clock_t start = clock(), current;
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0;
+    uint64_t p = 2, iter = 0, mwin = 0, delta = 0;
     rci_t n = G->ncols, comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     rci_t k = n/2; // number of rows in G
 
@@ -29,7 +29,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 #endif
 
 #if defined(DEBUG)
-    uint64_t nb_collision = 0, nb_collision_delta = 0, nb_collision_delta_current = 0;
+    //uint64_t nb_collision = 0, nb_collision_delta = 0, nb_collision_delta_current = 0;
 #endif
 
     uint64_t* word = NULL;
@@ -97,15 +97,15 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     uint32_t* lc_tab_first_size = (uint32_t*) malloc(m * sizeof(uint32_t));
     uint32_t* lc_tab_second_size = (uint32_t*) malloc(m * sizeof(uint32_t));
     uint32_t* lc_tab_third_size = (uint32_t*) malloc(m * sizeof(uint32_t));
-    uint32_t* lc_indexes = (uint64_t*)malloc(m * sizeof(uint32_t));
+    uint32_t* lc_indexes = (uint32_t*)malloc(m * sizeof(uint32_t));
     CHECK_MALLOC(lc_tab_first_size);
     CHECK_MALLOC(lc_tab_second_size);
     CHECK_MALLOC(lc_tab_third_size);
     CHECK_MALLOC(lc_indexes);
 
     // Generic alias on the sorted arrays
-    lc* lc_tab_alias_second = NULL;
-    lc* lc_tab_alias_third_sorted = NULL;
+    lc** lc_tab_alias_second_sorted = (lc**)malloc(m * sizeof(lc*));
+    lc** lc_tab_alias_third_sorted = (lc**)malloc(m * sizeof(lc*));
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1 << sigma) - 1;
@@ -189,7 +189,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         /* End of the Canteaut-Chabaud stuff. We now have a proper Iset to work with. */
 
         // Reset all the stuff we will need in the iteration
-        memset(lc_indexes, 0, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint32_t));
+
         for (mwin = 0; mwin < m; mwin++) {
             memset(collisions_first_pass[mwin], 0, nb_keys_bits);
             memset(collisions_second_pass[mwin], 0, nb_keys_bits);
@@ -224,7 +225,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
         memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint32_t));
-        memset(lc_indexes, 0, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint32_t));
 
         // 2nd pass, gen all the LC from the k/2 to k rows but store
         // only the ones that will collides with at least 1 element from lc_tab_first
@@ -242,13 +243,13 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     // Compute the first sigma bits of the LC of rows 1 & 2
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
 
-                    if (collision_tab_first[delta]) {
+                    if (STERN_GET(collisions_first_pass[mwin], delta)) {
 
                         lc_tab_second[mwin][lc_indexes[mwin]].index1 = comb2[0];
                         lc_tab_second[mwin][lc_indexes[mwin]].index2 = comb2[1];
                         lc_tab_second[mwin][lc_indexes[mwin]].delta = delta;
 
-                        STERN_SET_ONE(collision_second_pass[mwin], delta);
+                        STERN_SET_ONE(collisions_second_pass[mwin], delta);
                         lc_indexes[mwin]++;
                     }
                 }
@@ -257,14 +258,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
         memcpy(lc_tab_second_size, lc_indexes, m * sizeof(uint32_t));
-        memset(lc_indexes, 0, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint32_t));
 
         // 3rd pass, copy all the element of first tab that will actually collide in a new array
         for (mwin = 0; mwin < m; mwin++) {
             for (i = 0; i < lc_tab_first_size[mwin]; i++) {
-                uint64_t d = lc_tab_first[mwin][i].delta;
-                if (STERN_GET(collisions_second_pass[mwin],d)) {
-                    memcpy(lc_tab_third[mwin][lc_indexes[mwin]], lc_tab_first[mwin][i], sizeof(lc));
+                delta = lc_tab_first[mwin][i].delta;
+                if (STERN_GET(collisions_second_pass[mwin], delta)) {
+                    memcpy(&lc_tab_third[mwin][lc_indexes[mwin]], &lc_tab_first[mwin][i], sizeof(lc));
                     lc_indexes[mwin]++;
                 }
             }
@@ -272,7 +273,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
         memcpy(lc_tab_third_size, lc_indexes, m * sizeof(uint32_t));
-        memset(lc_indexes, 0, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint32_t));
 
         /* From here, lc_tab_third[i][:lc_tab_third_size[i]] and lc_tab_second[i][:lc_tab_second_size[i]]
         *  contains the LCs that WILL collide.
@@ -289,23 +290,23 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
             for (index_second = 0; index_second < lc_tab_second_size[mwin]; index_second++) {
 
-                if (index_second > 0 && lc_tab_second[mwin][index_second - 1].delta != lc_tab_second[mwin][index_second]) {
+                if (index_second > 0 && lc_tab_alias_second_sorted[mwin][index_second - 1].delta != lc_tab_alias_second_sorted[mwin][index_second].delta) {
                     save_index_third = index_third;
                 }
 
                 // TODO SIMD
-                mxor(linear_comb,(uint64_t*)linear_comb, 10);
-                mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_second[mwin][index_second].index1], 10);
-                mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_second[mwin][index_second].index2], 10);
+                memset(linear_comb, 0, 80);
+                mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index1], 10);
+                mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index2], 10);
 
-                for (index_third = save_index_third; index_third < lc_tab_third_size[mwin] && lc_tab_second[index_second].delta == lc_tab_third[index_third].delta; index_third++) {
+                for (index_third = save_index_third; index_third < lc_tab_third_size[mwin] && lc_tab_alias_second_sorted[mwin][index_second].delta == lc_tab_alias_third_sorted[mwin][index_third].delta; index_third++) {
 
                     memcpy(linear_comb_next, linear_comb, 80);
                     // TODO SIMD
-                    mxor(linear_comb_next, (uint64_t*)Glw->rows[lc_tab_third[mwin][index_third].index1], 10);
-                    mxor(linear_comb_next, (uint64_t*)Glw->rows[lc_tab_thrd[mwin][index_third].index2], 10);
+                    mxor(linear_comb_next, (uint64_t*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index1], 10);
+                    mxor(linear_comb_next, (uint64_t*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index2], 10);
 
-                    //printf("DBG Linear comb is : \n");
+                    //printf("DBG mwin = %lu, linear comb is : \n", mwin);
                     //printbin(linear_comb_next, 640);
 
                     wt = popcnt64_unrolled(linear_comb_next, 10);
@@ -320,10 +321,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                         min_wt = wt;
 
                         // Save the indexes of the LC
-                        min_comb[0] = lc_tab_second[mwin][index_second].index1;
-                        min_comb[1] = lc_tab_second[mwin][index_second].index2;
-                        min_comb[2] = lc_tab_third[mwin][index_third].index1;
-                        min_comb[3] = lc_tab_third[mwin][index_third].index2;
+                        min_comb[0] = lc_tab_alias_second_sorted[mwin][index_second].index1;
+                        min_comb[1] = lc_tab_alias_second_sorted[mwin][index_second].index2;
+                        min_comb[2] = lc_tab_alias_third_sorted[mwin][index_third].index1;
+                        min_comb[3] = lc_tab_alias_third_sorted[mwin][index_third].index2;
 
                         memcpy(min_cw, linear_comb_next, 80);
                         memcpy(column_perms_copy, column_perms, n * sizeof(rci_t));
@@ -348,9 +349,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     }
 
 #ifdef DEBUG
-    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/(double)iter);
-    printf("# Average number of collision / delta with at least 1 collision: %.3f\n", (double)nb_collision/(double)nb_collision_delta);
-    printf("# Average number of delta with at least 1 collision / nb delta : %3.f / %u\n", (double)nb_collision_delta/(double)iter, nelem);
+    //printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/(double)iter);
+    //printf("# Average number of collision / delta with at least 1 collision: %.3f\n", (double)nb_collision/(double)nb_collision_delta);
+    //printf("# Average number of delta with at least 1 collision / nb delta : %3.f / %u\n", (double)nb_collision_delta/(double)iter, nelem);
 #endif
     printf("# Total iter done : %lu\n", iter);
     printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);
@@ -365,8 +366,35 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     free(linear_comb_next);
     free(column_perms_copy);
     free(column_perms);
-    free(lc_offsets);
-    free(lc_tab);
+
+    for (mwin = 0; mwin < m; mwin++) {
+        free(collisions_first_pass[mwin]);
+        free(collisions_second_pass[mwin]);
+        free(lc_tab_first[mwin]);
+        free(lc_tab_second[mwin]);
+        free(lc_tab_third[mwin]);
+        free(lc_tab_second_sorted[mwin]);
+        free(lc_tab_third_sorted[mwin]);
+
+    }
+
+    free(lc_tab_first);
+    free(lc_tab_second);
+    free(lc_tab_third);
+    free(lc_tab_second_sorted);
+    free(lc_tab_third_sorted);
+
+    free(collisions_first_pass);
+    free(collisions_second_pass);
+
+    free(lc_tab_first_size);
+    free(lc_tab_second_size);
+    free(lc_tab_third_size);
+    free(lc_tab_alias_second_sorted);
+    free(lc_tab_alias_third_sorted);
+
+    free(lc_indexes);
+
     free(aux);
 
     return result;

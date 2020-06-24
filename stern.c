@@ -8,14 +8,14 @@
 #define STERN_GET(tab, index) ((tab[index >> 6]) >> (index & 0x3f)) & 1
 #define STERN_SET_ONE(tab, index) (tab[index >> 6]) |= (1ULL << (index & 0x3f))
 
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m) {
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m, uint64_t c) {
 
     // time mesuring stuff
     clock_t start = clock(), current;
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0, mwin = 0, delta = 0;
+    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0;
     rci_t n = G->ncols, comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     rci_t k = n/2; // number of rows in G
 
@@ -115,76 +115,77 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     while (1) {
 
-        // TODO: make c iterations here
+        for (citer = 0; citer < c; citer++) {
 
-        /* Start of the Canteaut-Chabaud stuff, to derive a new information set. */
-        // Find lambda, mu s.t. Glw[lambda, mu] == 1
-        lambda = xoshiro256starstar_random() % k;
-        word = Glw->rows[lambda];
+            /* Start of the Canteaut-Chabaud stuff, to derive a new information set. */
+            // Find lambda, mu s.t. Glw[lambda, mu] == 1
+            lambda = xoshiro256starstar_random() % k;
+            word = Glw->rows[lambda];
 
-        mu = xoshiro256starstar_random() % 10;
-        // Assuming a whole row can't be zero
-        while (word[mu] == 0) {
-            mu = (mu + 1) % 10;
-        }
-
-        j  = xoshiro256starstar_random() % 64;
-        uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
-        j = (j + _tzcnt_u64(val)) % 64;
-
-#if defined(AVX512_ENABLED)
-        uint64_t big_mu = mu, small_mu = j;
-#endif
-        mu = mu * 64 + j;
-
-       // Log the column swapping
-        tmp = column_perms[lambda];
-        column_perms[lambda] = column_perms[mu + 640 /* k */];
-        column_perms[mu + 640 /* k */] = tmp;
-
-        // Clear the bit at the intersection of the lambda'th row and the mu'th column
-        // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row
-        mzd_write_bit(Glw, lambda, mu, 0);
-
-#if defined(AVX512_ENABLED)
-        void* row_lambda = Glw->rows[lambda];
-        __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
-        __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
-
-        mask[big_mu] = (1ULL << small_mu);
-        __m512i m1 = _mm512_loadu_si512(mask);
-        __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
-#endif
-
-        // Add the lambda'th row to every other row that have a 1 in the mu'th column
-        for (j = 0; j < k; j++) {
-            row = Glw->rows[j];
-
-#if defined(AVX512_ENABLED)
-            // Load the whole row
-            __m512i rj1 = _mm512_loadu_si512(row);
-            __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);
-
-            // Check whether there is a one in column mu using the mask
-            if (j != lambda && (_mm512_test_epi64_mask(rj1, m1) >= 1 || _mm_test_epi64_mask(rj2, m2) >= 1)) {
-
-                // Perform row addition
-                _mm512_storeu_si512(row, _mm512_xor_si512(rlambda1, rj1));
-                _mm_storeu_si128(row + 64, _mm_xor_si128(rlambda2, rj2));
-#else
-            if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
-                mzd_row_add(Glw, lambda, j);
-#endif
+            mu = xoshiro256starstar_random() % 10;
+            // Assuming a whole row can't be zero
+            while (word[mu] == 0) {
+                mu = (mu + 1) % 10;
             }
-        }
 
-         // Unclear the bit we removed earlier
-        mzd_write_bit(Glw, lambda, mu, 1);
+            j  = xoshiro256starstar_random() % 64;
+            uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
+            j = (j + _tzcnt_u64(val)) % 64;
 
 #if defined(AVX512_ENABLED)
-        // Clear the mask for the next iteration
-        mask[mu/64] = 0;
+            uint64_t big_mu = mu, small_mu = j;
 #endif
+            mu = mu * 64 + j;
+
+           // Log the column swapping
+            tmp = column_perms[lambda];
+            column_perms[lambda] = column_perms[mu + 640 /* k */];
+            column_perms[mu + 640 /* k */] = tmp;
+
+            // Clear the bit at the intersection of the lambda'th row and the mu'th column
+            // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row
+            mzd_write_bit(Glw, lambda, mu, 0);
+
+#if defined(AVX512_ENABLED)
+            void* row_lambda = Glw->rows[lambda];
+            __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
+            __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
+
+            mask[big_mu] = (1ULL << small_mu);
+            __m512i m1 = _mm512_loadu_si512(mask);
+            __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
+#endif
+
+            // Add the lambda'th row to every other row that have a 1 in the mu'th column
+            for (j = 0; j < k; j++) {
+                row = Glw->rows[j];
+
+#if defined(AVX512_ENABLED)
+                // Load the whole row
+                __m512i rj1 = _mm512_loadu_si512(row);
+                __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);
+
+                // Check whether there is a one in column mu using the mask
+                if (j != lambda && (_mm512_test_epi64_mask(rj1, m1) >= 1 || _mm_test_epi64_mask(rj2, m2) >= 1)) {
+
+                    // Perform row addition
+                    _mm512_storeu_si512(row, _mm512_xor_si512(rlambda1, rj1));
+                    _mm_storeu_si128(row + 64, _mm_xor_si128(rlambda2, rj2));
+#else
+                if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
+                    mzd_row_add(Glw, lambda, j);
+#endif
+                }
+            }
+
+             // Unclear the bit we removed earlier
+            mzd_write_bit(Glw, lambda, mu, 1);
+
+#if defined(AVX512_ENABLED)
+            // Clear the mask for the next iteration
+            mask[mu/64] = 0;
+#endif
+        }
 
         /* End of the Canteaut-Chabaud stuff. We now have a proper Iset to work with. */
 

@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
     uint64_t radix_width = 9;
     uint64_t radix_nlen = 2;
     uint64_t m = 5;
+    uint64_t c = 32;
 
     if (argc > 1) {
 
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, time_sec, sigma, radix_width, radix_nlen, m);
+    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, time_sec, sigma, radix_width, radix_nlen, m, c);
 
     if (!min_cw) {
         printf("failed, leaving.\n");

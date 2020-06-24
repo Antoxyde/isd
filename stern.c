@@ -29,7 +29,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 #endif
 
 #if defined(DEBUG)
-    //uint64_t nb_collision = 0, nb_collision_delta = 0, nb_collision_delta_current = 0;
+    uint64_t nb_collision = 0, nb_collision_delta = 0, collisions_list_size = 0; //nb_collision_delta_current = 0;
 #endif
 
     uint64_t* word = NULL;
@@ -289,10 +289,17 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         for (mwin = 0; mwin < m; mwin++) {
             int index_second = 0, index_third = 0, save_index_third = 0;
 
+#if defined(DEBUG)
+            collisions_list_size += lc_tab_second_size[mwin] + lc_tab_third_size[mwin];
+#endif
             for (index_second = 0; index_second < lc_tab_second_size[mwin]; index_second++) {
 
                 if (index_second > 0 && lc_tab_alias_second_sorted[mwin][index_second - 1].delta != lc_tab_alias_second_sorted[mwin][index_second].delta) {
                     save_index_third = index_third;
+
+#if defined(DEBUG)
+                    nb_collision_delta++;
+#endif
                 }
 
                 // TODO SIMD
@@ -301,6 +308,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index2], 10);
 
                 for (index_third = save_index_third; index_third < lc_tab_third_size[mwin] && lc_tab_alias_second_sorted[mwin][index_second].delta == lc_tab_alias_third_sorted[mwin][index_third].delta; index_third++) {
+
+#if defined(DEBUG)
+                    nb_collision++;
+#endif
 
                     memcpy(linear_comb_next, linear_comb, 80);
                     // TODO SIMD
@@ -350,9 +361,9 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     }
 
 #ifdef DEBUG
-    //printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/(double)iter);
-    //printf("# Average number of collision / delta with at least 1 collision: %.3f\n", (double)nb_collision/(double)nb_collision_delta);
-    //printf("# Average number of delta with at least 1 collision / nb delta : %3.f / %u\n", (double)nb_collision_delta/(double)iter, nelem);
+    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/((double)iter * m));
+    printf("# Average number of delta with at least 1 collision / nb delta : %.3f / %u\n", (double)nb_collision_delta/((double)iter * m), nelem);
+    printf("# Average sorted list size : %.3f\n", (double)collisions_list_size/(2.0 * (double)iter * m));
 #endif
     printf("# Total iter done : %lu\n", iter);
     printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);

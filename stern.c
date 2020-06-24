@@ -29,7 +29,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 #endif
 
 #if defined(DEBUG)
-    uint64_t nb_collision = 0, nb_collision_delta = 0, collisions_list_size = 0; //nb_collision_delta_current = 0;
+    uint64_t nb_collisions = 0, nb_collisions_delta = 0, collisions_list_size = 0;
 #endif
 
     uint64_t* word = NULL;
@@ -211,7 +211,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
                     // Compute the first sigma bits of the LC of rows 1 & 2
                     // on the windows mwin
-                    // TODO: SIMD xor ?
+                    // TODO: SIMD xor before the loop ? is it worth (we only need to xor the first sigma bits of each words ..) ?
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
 
                     lc_tab_first[mwin][lc_indexes[mwin]].index1 = comb1[0];
@@ -278,9 +278,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         /* From here, lc_tab_third[i][:lc_tab_third_size[i]] and lc_tab_second[i][:lc_tab_second_size[i]]
         *  contains the LCs that WILL collide.
-        * So we sort em all */
+        * So we sort em all. */
 
         for (mwin = 0; mwin < m; mwin++) {
+            // We have to use aliases to avoid mixing lc_tab_X and lc_tab_X_sorted pointers (radixsort returns one of them, depending on the radix_nlen parameter.)
             lc_tab_alias_second_sorted[mwin] = radixsort(lc_tab_second[mwin], lc_tab_second_sorted[mwin], lc_tab_second_size[mwin], radix_width, radix_nlen, aux);
             lc_tab_alias_third_sorted[mwin] = radixsort(lc_tab_third[mwin], lc_tab_third_sorted[mwin],lc_tab_third_size[mwin] , radix_width, radix_nlen, aux);
         }
@@ -298,25 +299,51 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     save_index_third = index_third;
 
 #if defined(DEBUG)
-                    nb_collision_delta++;
+                    nb_collisions_delta++;
 #endif
                 }
 
-                // TODO SIMD
+#if defined(AVX512_ENABLED)
+                void* row1 = (void*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index1];
+                void* row2 = (void*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index2];
+
+                __m512i linear_comb_high = _mm512_loadu_si512(row1);
+                __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
+
+                linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
+                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
+#else
                 memset(linear_comb, 0, 80);
                 mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index1], 10);
                 mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index2], 10);
+#endif
 
                 for (index_third = save_index_third; index_third < lc_tab_third_size[mwin] && lc_tab_alias_second_sorted[mwin][index_second].delta == lc_tab_alias_third_sorted[mwin][index_third].delta; index_third++) {
 
 #if defined(DEBUG)
-                    nb_collision++;
+                    nb_collisions++;
 #endif
 
+#if defined(AVX512_ENABLED)
+                    void* row3 = (void*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index1];
+                    void* row4 = (void*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index2];
+
+                    // Load the two new rows and add them to the LC of the two previous ones.
+                    __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
+                    __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
+
+                    linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row4));
+                    linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64));
+
+                    // Save the result of the LC of the 4 rows
+                    _mm512_storeu_si512(linear_comb_next, linear_comb_high_next);
+                    _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low_next);
+
+#else
                     memcpy(linear_comb_next, linear_comb, 80);
-                    // TODO SIMD
                     mxor(linear_comb_next, (uint64_t*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index1], 10);
                     mxor(linear_comb_next, (uint64_t*)Glw->rows[lc_tab_alias_third_sorted[mwin][index_third].index2], 10);
+#endif
 
                     //printf("DBG mwin = %lu, linear comb is : \n", mwin);
                     //printbin(linear_comb_next, 640);
@@ -361,8 +388,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     }
 
 #ifdef DEBUG
-    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collision/((double)iter * m));
-    printf("# Average number of delta with at least 1 collision / nb delta : %.3f / %u\n", (double)nb_collision_delta/((double)iter * m), nelem);
+    printf("# Average number of collisions / iter : %.3f\n", (double)nb_collisions/((double)iter * m));
+    printf("# Average number of delta with at least 1 collision / nb delta : %.3f / %u\n", (double)nb_collisions_delta/((double)iter * m), nelem);
     printf("# Average sorted list size : %.3f\n", (double)collisions_list_size/(2.0 * (double)iter * m));
 #endif
     printf("# Total iter done : %lu\n", iter);

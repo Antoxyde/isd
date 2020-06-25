@@ -150,8 +150,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
            // Log the column swapping
             tmp = column_perms[lambda];
-            column_perms[lambda] = column_perms[mu + 640 /* K */];
-            column_perms[mu + 640 /* K */] = tmp;
+            column_perms[lambda] = column_perms[mu + K];
+            column_perms[mu + K] = tmp;
 
             // Clear the bit at the intersection of the lambda'th row and the mu'th column
             // so we don't have to rewrite a 1 in mu'th column everytime we add the lambda'th row
@@ -159,12 +159,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
 #if defined(AVX512_ENABLED)
             void* row_lambda = Glw->rows[lambda];
+
+            // A row contains K bits, so we use 512 + 128 bits registers
             __m512i rlambda1 = _mm512_loadu_si512(row_lambda);
-            __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* = 512 / (8 * sizeof(void)) */);
+            __m128i rlambda2 = _mm_loadu_si128(row_lambda + 64 /* 512/(8 * sizeof(void)) */);
 
             mask[big_mu] = (1ULL << small_mu);
             __m512i m1 = _mm512_loadu_si512(mask);
-            __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* = 512/(8 * sizeof(void)) */);
+            __m128i m2 = _mm_loadu_si128(((void*)mask) + 64 /* 512/(8 * sizeof(void)) */);
 #endif
 
             // Add the lambda'th row to every other row that have a 1 in the mu'th column
@@ -176,14 +178,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
                 // Load the whole row
                 __m512i rj1 = _mm512_loadu_si512(row);
-                __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);
+                __m128i rj2 = _mm_loadu_si128(row + 64 /* 512/(8 * sizeof(void))  */);
 
                 // Check whether there is a one in column mu using the mask
                 if (j != lambda && (_mm512_test_epi64_mask(rj1, m1) >= 1 || _mm_test_epi64_mask(rj2, m2) >= 1)) {
 
                     // Perform row addition
                     _mm512_storeu_si512(row, _mm512_xor_si512(rlambda1, rj1));
-                    _mm_storeu_si128(row + 64, _mm_xor_si128(rlambda2, rj2));
+                    _mm_storeu_si128(row + 64 /* 512/(8 * sizeof(void)) */, _mm_xor_si128(rlambda2, rj2));
 #else
                 if (j != lambda && mzd_read_bit(Glw, j, mu) == 1) {
                     mzd_row_add(Glw, lambda, j);
@@ -211,7 +213,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
             memset(collisions_second_pass[mwin], 0, nb_keys_bits);
 
         }
-
 
         // 1st pass, gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < 320 /* K/2 */; comb1[0]++) {
@@ -324,10 +325,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                 void* row2 = (void*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index2];
 
                 __m512i linear_comb_high = _mm512_loadu_si512(row1);
-                __m128i linear_comb_low = _mm_loadu_si128(row1 + 64 );
+                __m128i linear_comb_low = _mm_loadu_si128(row1 + 64 /* 512/8 */ );
 
                 linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
-                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
+                linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64 /* 512/8 */));
 #else
                 memset(linear_comb, 0, 80 /* K/8 */);
                 mxor(linear_comb, (uint64_t*)Glw->rows[lc_tab_alias_second_sorted[mwin][index_second].index1], 10 /* K/64 */);
@@ -347,14 +348,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
                     // Load the two new rows and add them to the LC of the two previous ones.
                     __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
-                    __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
+                    __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64 /* 512/(8 * sizeof(void)) */));
 
                     linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row4));
-                    linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64));
+                    linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64 /* 512/(8 * sizeof(void)) */));
 
                     // Save the result of the LC of the 4 rows
                     _mm512_storeu_si512(linear_comb_next, linear_comb_high_next);
-                    _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low_next);
+                    _mm_storeu_si128((__m128i*)(linear_comb_next + 8 /* 512/(8 * sizeof(uint64_t) */), linear_comb_low_next);
 
 #else
                     memcpy(linear_comb_next, linear_comb, 80 /* K/8 */ );
@@ -365,7 +366,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     //printf("DBG mwin = %lu, linear comb is : \n", mwin);
                     //printbin(linear_comb_next, 640);
 
-                    wt = popcnt64_unrolled(linear_comb_next, 10);
+                    wt = popcnt64_unrolled(linear_comb_next, 10 /* K/64 */);
 
                     if (wt < min_wt) {
 

@@ -20,9 +20,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     rci_t n = G->ncols, comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     rci_t k = n/2; // number of rows in G, as it generates a [n, n/2] code.
 
-    int min_wt = 1000, wt = 0;
-    void* row = NULL;
-    (void)row; // otherwise gcc is :-(
+    int min_wt = k - 1, wt = 0;
 
 #if defined(AVX512_ENABLED)
     uint64_t mask[10];
@@ -168,9 +166,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
             // Add the lambda'th row to every other row that have a 1 in the mu'th column
             for (j = 0; j < k; j++) {
-                row = Glw->rows[j];
+
 
 #if defined(AVX512_ENABLED)
+                void* row = Glw->rows[j];
+
                 // Load the whole row
                 __m512i rj1 = _mm512_loadu_si512(row);
                 __m128i rj2 = _mm_loadu_si128(row + 64 /* = 512 / (8 * sizeof(void)) */);

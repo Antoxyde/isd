@@ -58,7 +58,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     // Number of possible different values for delta
     uint64_t nb_keys = 1ULL << sigma;
-    uint64_t nb_keys_bits = nb_keys / 8;
+    uint64_t nb_keys_bits = 1ULL << (sigma - 3);
 
     // Used to track which combination are present
     uint64_t** collisions_first_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));

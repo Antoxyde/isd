@@ -18,7 +18,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0;
+    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0, lc_index = 0;
 
     rci_t comb1[p], comb2[p], min_comb[2*p],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     int min_wt = K - 1, wt = 0;
@@ -56,8 +56,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     // so its an upper bound for the size of each array
     uint64_t nelem = ((N/4 * (N/4 - 1)) /2);
 
-    // Number of possible different values for delta
-    uint64_t nb_keys = 1ULL << sigma;
+    // Number of bits to store 1 for every possible different values for delta
     uint64_t nb_keys_bits = 1ULL << (sigma - 3);
 
     // Used to track which combination are present
@@ -98,10 +97,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     }
 
     // These arrays hold the size of their corresponding lc_tab
-    uint64_t* lc_tab_first_size = (uint64_t*) malloc(m * sizeof(uint64_t));
     uint64_t* lc_tab_second_size = (uint64_t*) malloc(m * sizeof(uint64_t));
     uint64_t* lc_tab_third_size = (uint64_t*) malloc(m * sizeof(uint64_t));
-    CHECK_MALLOC(lc_tab_first_size);
     CHECK_MALLOC(lc_tab_second_size);
     CHECK_MALLOC(lc_tab_third_size);
 
@@ -128,7 +125,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
             // Find lambda, mu s.t. Glw[lambda, mu] == 1
             uint64_t randdata =  xoshiro256starstar_random();
             lambda = randdata % K;
-            randdata >>= 10 /* ceil(log_2(K)) */;
+            randdata >>= 10 /* ceil(log_2(K)) for K=640 */;
 
             word = Glw->rows[lambda];
 
@@ -207,12 +204,14 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // Reset all the stuff we will need in the iteration
         memset(lc_indexes, 0, m * sizeof(uint64_t));
+        lc_index = 0;
 
         for (mwin = 0; mwin < m; mwin++) {
             memset(collisions_first_pass[mwin], 0, nb_keys_bits);
             memset(collisions_second_pass[mwin], 0, nb_keys_bits);
 
         }
+
 
         // 1st pass, gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < 320 /* K/2 */; comb1[0]++) {
@@ -230,19 +229,16 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     // TODO: SIMD xor before the loop ? is it worth (we only need to xor the first sigma bits of each words ..) ?
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
 
-                    lc_tab_first[mwin][lc_indexes[mwin]].index1 = comb1[0];
-                    lc_tab_first[mwin][lc_indexes[mwin]].index2 = comb1[1];
-                    lc_tab_first[mwin][lc_indexes[mwin]].delta = delta;
-
+                    lc_tab_first[mwin][lc_index].index1 = comb1[0];
+                    lc_tab_first[mwin][lc_index].index2 = comb1[1];
+                    lc_tab_first[mwin][lc_index].delta = delta;
                     STERN_SET_ONE(collisions_first_pass[mwin], delta);
-                    lc_indexes[mwin]++;
                 }
+
+                lc_index++;
             }
         }
 
-        // Save the size of each lc_tab_first elements and reset lc_indexes
-        memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint64_t));
-        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         // 2nd pass, gen all the LC from the k/2 to k rows but store
         // only the ones that will collides with at least 1 element from lc_tab_first
@@ -279,7 +275,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // 3rd pass, copy all the element of first tab that will actually collide in a new array
         for (mwin = 0; mwin < m; mwin++) {
-            for (i = 0; i < lc_tab_first_size[mwin]; i++) {
+            for (i = 0; i < nelem; i++) {
                 delta = lc_tab_first[mwin][i].delta;
                 if (STERN_GET(collisions_second_pass[mwin], delta)) {
                     memcpy(&lc_tab_third[mwin][lc_indexes[mwin]], &lc_tab_first[mwin][i], sizeof(lc));
@@ -447,7 +443,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     free(collisions_first_pass);
     free(collisions_second_pass);
 
-    free(lc_tab_first_size);
     free(lc_tab_second_size);
     free(lc_tab_third_size);
     free(lc_tab_alias_second_sorted);

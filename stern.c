@@ -20,8 +20,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
     uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0;
 
-    rci_t comb1[2 /* p */], comb2[2 /* p */], min_comb[4 /* 2*p */],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
-
+    rci_t comb1[p], comb2[p], min_comb[2*p],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     int min_wt = K - 1, wt = 0;
 
 #if defined(AVX512_ENABLED)

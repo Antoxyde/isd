@@ -114,10 +114,10 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     lc** lc_tab_alias_third_sorted = (lc**)malloc(m * sizeof(lc*));
 
     // Precomputed mask for the window on which we want collision
-    uint64_t sigmask = (1 << sigma) - 1;
+    uint64_t sigmask = (1ULL << sigma) - 1;
 
     // Radixsort offsets array
-    uint32_t *aux = (uint32_t*) malloc((1 << radix_width) * sizeof(uint32_t));
+    uint32_t *aux = (uint32_t*) malloc((1ULL << radix_width) * sizeof(uint32_t));
 
     while (1) {
 

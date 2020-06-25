@@ -54,11 +54,11 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     // nelem is the max number of LCs we will make
     // so its an upper bound for the size of each array
-    uint32_t nelem = ((N/4 * (N/4 - 1)) /2);
+    uint64_t nelem = ((N/4 * (N/4 - 1)) /2);
 
-    // Number of possible dfferent values for delta
-    uint32_t nb_keys = 1UL << sigma;
-    uint32_t nb_keys_bits = nb_keys / 8;
+    // Number of possible different values for delta
+    uint64_t nb_keys = 1ULL << sigma;
+    uint64_t nb_keys_bits = nb_keys / 8;
 
     // Used to track which combination are present
     uint64_t** collisions_first_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
@@ -98,15 +98,15 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     }
 
     // These arrays hold the size of their corresponding lc_tab
-    uint32_t* lc_tab_first_size = (uint32_t*) malloc(m * sizeof(uint32_t));
-    uint32_t* lc_tab_second_size = (uint32_t*) malloc(m * sizeof(uint32_t));
-    uint32_t* lc_tab_third_size = (uint32_t*) malloc(m * sizeof(uint32_t));
+    uint64_t* lc_tab_first_size = (uint64_t*) malloc(m * sizeof(uint64_t));
+    uint64_t* lc_tab_second_size = (uint64_t*) malloc(m * sizeof(uint64_t));
+    uint64_t* lc_tab_third_size = (uint64_t*) malloc(m * sizeof(uint64_t));
     CHECK_MALLOC(lc_tab_first_size);
     CHECK_MALLOC(lc_tab_second_size);
     CHECK_MALLOC(lc_tab_third_size);
 
     // A generic holder for the current indexes
-    uint32_t* lc_indexes = (uint32_t*)malloc(m * sizeof(uint32_t));
+    uint64_t* lc_indexes = (uint64_t*)malloc(m * sizeof(uint64_t));
     CHECK_MALLOC(lc_indexes);
 
     // Generic alias on the sorted arrays
@@ -129,7 +129,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
             lambda = xoshiro256starstar_random() % K;
             word = Glw->rows[lambda];
 
-            mu = xoshiro256starstar_random() % 10 /* K/64 */
+            mu = xoshiro256starstar_random() % 10 /* K/64 */;
             // Assuming a whole row can't be zero
             while (word[mu] == 0) {
                 mu = (mu + 1) % 10 /* K/64 */;
@@ -201,7 +201,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         /* End of the Canteaut-Chabaud stuff. We now have a proper Iset to work with. */
 
         // Reset all the stuff we will need in the iteration
-        memset(lc_indexes, 0, m * sizeof(uint32_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         for (mwin = 0; mwin < m; mwin++) {
             memset(collisions_first_pass[mwin], 0, nb_keys_bits);
@@ -236,8 +236,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         }
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
-        memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint32_t));
-        memset(lc_indexes, 0, m * sizeof(uint32_t));
+        memcpy(lc_tab_first_size, lc_indexes, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         // 2nd pass, gen all the LC from the k/2 to k rows but store
         // only the ones that will collides with at least 1 element from lc_tab_first
@@ -269,8 +269,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         }
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
-        memcpy(lc_tab_second_size, lc_indexes, m * sizeof(uint32_t));
-        memset(lc_indexes, 0, m * sizeof(uint32_t));
+        memcpy(lc_tab_second_size, lc_indexes, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         // 3rd pass, copy all the element of first tab that will actually collide in a new array
         for (mwin = 0; mwin < m; mwin++) {
@@ -284,8 +284,8 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         }
 
         // Save the size of each lc_tab_first elements and reset lc_indexes
-        memcpy(lc_tab_third_size, lc_indexes, m * sizeof(uint32_t));
-        memset(lc_indexes, 0, m * sizeof(uint32_t));
+        memcpy(lc_tab_third_size, lc_indexes, m * sizeof(uint64_t));
+        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         /* From here, lc_tab_third[i][:lc_tab_third_size[i]] and lc_tab_second[i][:lc_tab_second_size[i]]
         *  contains the LCs that WILL collide.
@@ -406,7 +406,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
 #ifdef DEBUG
     printf("# Average number of collisions / iter : %.3f\n", (double)nb_collisions/((double)iter * m));
-    printf("# Average number of delta with at least 1 collision / nb delta : %.3f / %u\n", (double)nb_collisions_delta/((double)iter * m), nelem);
+    printf("# Average number of delta with at least 1 collision / nb delta : %.3f / %lu\n", (double)nb_collisions_delta/((double)iter * m), nelem);
     printf("# Average sorted list size : %.3f\n", (double)collisions_list_size/(2.0 * (double)iter * m));
 #endif
     printf("# Total number of iterations done : %lu\n", iter);
@@ -460,7 +460,7 @@ lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint3
 
     uint32_t mask, k;
     int64_t i;
-    k = 1 << width;
+    k = 1UL << width;
     mask = k - 1;
 
     memset(Aux, 0, k * sizeof(uint32_t));

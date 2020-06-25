@@ -126,10 +126,15 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
             /* Start of the Canteaut-Chabaud stuff, to derive a new information set. */
 
             // Find lambda, mu s.t. Glw[lambda, mu] == 1
-            lambda = xoshiro256starstar_random() % K;
+            uint64_t randdata =  xoshiro256starstar_random();
+            lambda = randdata % K;
+            randdata >>= 10 /* ceil(log_2(K)) */;
+
             word = Glw->rows[lambda];
 
-            mu = xoshiro256starstar_random() % 10 /* K/64 */;
+            mu = randdata % 10 /* K/64 */;
+            randdata >>= 4 /* ceil(log_2(10)) */;
+
             // Assuming a whole row can't be zero
             while (word[mu] == 0) {
                 mu = (mu + 1) % 10 /* K/64 */;
@@ -137,7 +142,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
             // We need to take a random 1 in this word.
             // Rotate the word by a random value and take the lowest one it has.
-            j  = xoshiro256starstar_random() % 64;
+            j  = randdata % 64;
             uint64_t val = ((word[mu] << (64 - j)) | (word[mu] >> j));
             j = (j + _tzcnt_u64(val)) % 64;
 

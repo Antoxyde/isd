@@ -272,7 +272,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                         lc_tab_third[mwin][lc_indexes[mwin]].index1 = comb1[0];
                         lc_tab_third[mwin][lc_indexes[mwin]].index2 = comb1[1];
                         lc_tab_third[mwin][lc_indexes[mwin]].delta = delta;
-                        STERN_SET_ONE(collisions_second_pass[mwin], delta);
                         lc_indexes[mwin]++;
                     }
                 }

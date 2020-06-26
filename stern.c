@@ -18,7 +18,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0, lc_index = 0;
+    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0;
 
     rci_t comb1[p], comb2[p], min_comb[2*p],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     int min_wt = K - 1, wt = 0;
@@ -64,7 +64,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     uint64_t** collisions_second_pass = (uint64_t**)malloc( m * sizeof(uint64_t*));
 
     // Holds the linear combinations made for each pass
-    lc** lc_tab_first = (lc**)malloc(m * sizeof(lc*));
     lc** lc_tab_second = (lc**)malloc(m * sizeof(lc*));
     lc** lc_tab_third = (lc**)malloc(m * sizeof(lc*));
     lc** lc_tab_second_sorted = (lc**)malloc(m * sizeof(lc*));
@@ -72,7 +71,6 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
     CHECK_MALLOC(collisions_first_pass);
     CHECK_MALLOC(collisions_second_pass);
-    CHECK_MALLOC(lc_tab_first);
     CHECK_MALLOC(lc_tab_second);
     CHECK_MALLOC(lc_tab_third);
     CHECK_MALLOC(lc_tab_second_sorted);
@@ -81,15 +79,13 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     for (mwin = 0; mwin < m; mwin++) {
         collisions_first_pass[mwin] = (uint64_t*)malloc(nb_keys_bits);
         collisions_second_pass[mwin] = (uint64_t*)malloc(nb_keys_bits);
-        lc_tab_first[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_second[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_third[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_second_sorted[mwin] = (lc*)malloc(nelem * sizeof(lc));
         lc_tab_third_sorted[mwin] = (lc*)malloc(nelem * sizeof(lc));
 
-        CHECK_MALLOC(collisions_first_pass);
-        CHECK_MALLOC(collisions_second_pass);
-        CHECK_MALLOC(lc_tab_first[mwin]);
+        CHECK_MALLOC(collisions_first_pass[mwin]);
+        CHECK_MALLOC(collisions_second_pass[mwin]);
         CHECK_MALLOC(lc_tab_second[mwin]);
         CHECK_MALLOC(lc_tab_third[mwin]);
         CHECK_MALLOC(lc_tab_second_sorted[mwin]);
@@ -206,40 +202,27 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 
         // Reset all the stuff we will need in the iteration
         memset(lc_indexes, 0, m * sizeof(uint64_t));
-        lc_index = 0;
 
         for (mwin = 0; mwin < m; mwin++) {
             memset(collisions_first_pass[mwin], 0, nb_keys_bits);
             memset(collisions_second_pass[mwin], 0, nb_keys_bits);
-
         }
 
         // 1st pass, gen all the LC from the first k/2 rows
         for (comb1[0] = 0; comb1[0]  < 320 /* K/2 */; comb1[0]++) {
-
             uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
 
             for (comb1[1] = comb1[0] + 1; comb1[1] < 320 /* K/2 */; comb1[1]++) {
-
                 uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
 
                 for (mwin = 0; mwin < m; mwin++) {
-
-                    // Compute the first sigma bits of the LC of rows 1 & 2
-                    // on the windows mwin
-                    // TODO: SIMD xor before the loop ? is it worth (we only need to xor the first sigma bits of each words ..) ?
+                    // Compute the first sigma bits of the LC of rows 1 & 2 on the windows mwin
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
-
-                    lc_tab_first[mwin][lc_index].index1 = comb1[0];
-                    lc_tab_first[mwin][lc_index].index2 = comb1[1];
-                    lc_tab_first[mwin][lc_index].delta = delta;
                     STERN_SET_ONE(collisions_first_pass[mwin], delta);
                 }
 
-                lc_index++;
             }
         }
-
 
         // 2nd pass, gen all the LC from the k/2 to k rows but store
         // only the ones that will collides with at least 1 element from lc_tab_first
@@ -275,19 +258,30 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
         memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         // 3rd pass, copy all the element of first tab that will actually collide in a new array
-        for (mwin = 0; mwin < m; mwin++) {
-            for (i = 0; i < nelem; i++) {
-                delta = lc_tab_first[mwin][i].delta;
-                if (STERN_GET(collisions_second_pass[mwin], delta)) {
-                    memcpy(&lc_tab_third[mwin][lc_indexes[mwin]], &lc_tab_first[mwin][i], sizeof(lc));
-                    lc_indexes[mwin]++;
+        for (comb1[0] = 0; comb1[0]  < 320 /* K/2 */; comb1[0]++) {
+            uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
+
+            for (comb1[1] = comb1[0] + 1; comb1[1] < 320 /* K/2 */; comb1[1]++) {
+                uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
+
+                for (mwin = 0; mwin < m; mwin++) {
+
+                    delta = (row1[mwin] ^ row2[mwin]) & sigmask;
+
+                    if (STERN_GET(collisions_second_pass[mwin], delta)) {
+                        lc_tab_third[mwin][lc_indexes[mwin]].index1 = comb1[0];
+                        lc_tab_third[mwin][lc_indexes[mwin]].index2 = comb1[1];
+                        lc_tab_third[mwin][lc_indexes[mwin]].delta = delta;
+                        STERN_SET_ONE(collisions_second_pass[mwin], delta);
+                        lc_indexes[mwin]++;
+                    }
                 }
             }
         }
 
+
         // Save the size of each lc_tab_first elements and reset lc_indexes
         memcpy(lc_tab_third_size, lc_indexes, m * sizeof(uint64_t));
-        memset(lc_indexes, 0, m * sizeof(uint64_t));
 
         /* From here, lc_tab_third[i][:lc_tab_third_size[i]] and lc_tab_second[i][:lc_tab_second_size[i]]
         *  contains the LCs that WILL collide.
@@ -428,14 +422,12 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
     for (mwin = 0; mwin < m; mwin++) {
         free(collisions_first_pass[mwin]);
         free(collisions_second_pass[mwin]);
-        free(lc_tab_first[mwin]);
         free(lc_tab_second[mwin]);
         free(lc_tab_third[mwin]);
         free(lc_tab_second_sorted[mwin]);
         free(lc_tab_third_sorted[mwin]);
     }
 
-    free(lc_tab_first);
     free(lc_tab_second);
     free(lc_tab_third);
     free(lc_tab_second_sorted);

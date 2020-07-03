@@ -29,9 +29,14 @@ def get_average_at(runs, t):
             di_last = di
     return som / len(runs)
 
-pranges = [load_run(runfile) for runfile in glob.glob("runs/prange_48h*")]
-stern = [load_run(runfile) for runfile in glob.glob("runs/stern_48h*")]
-stern_3pass = [load_run(runfile) for runfile in glob.glob("runs/stern_3pass_48h*")]
+pranges = [load_run(runfile) for runfile in glob.glob("runs/prange_48h/*")]
+stern = [load_run(runfile) for runfile in glob.glob("runs/stern_48h/*")]
+stern_3pass = [load_run(runfile) for runfile in glob.glob("runs/stern_multiwin_48h/*")]
+
+
+print("Min found with Prange48h : {}".format(min(run[1][-1] for run in pranges)))
+print("Min found with Stern48h : {}".format(min(run[1][-1] for run in stern)))
+print("Min found with Stern multiwin 48h : {}".format(min(run[1][-1] for run in stern_3pass)))
 
 print("Moy low prange : {}".format( sum(run[1][-1] for run in pranges)/len(pranges)))
 print("Moy low stern : {}".format( sum(run[1][-1] for run in stern)/len(stern)))

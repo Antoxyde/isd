@@ -13,4 +13,3 @@ done
 
 # Don't launch the last one in backgroud because the job is killed when this script exits.
 ./${prog} > "${fpath}/${algname}_48h_r${nrun}_${ninstances}_${uniqueness}"
-

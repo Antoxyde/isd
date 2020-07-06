@@ -5,12 +5,14 @@ Two differents algorithms are implemented :
 * Prange [[Prange](#Prange)], using Canteaut en Chabaud improvements [[CC](#CC)]
 * Stern [[Stern](#Stern)], also using Canteaut and Chabaud improvements [[CC](#CC)] , and some ideas of Bernstein, Lange and Peters [[BLP](#BLP)]
 
+Both of them are implemented with AVX-512 support.
+
 # Credits
 
 * [m4ri](https://bitbucket.org/malb/m4ri/src/master/)
 * [libpopcnt](https://github.com/kimwalisch/libpopcnt)
 
-# Biliography
+# Bibliography
 
 <a name="Prange">[Prange]</a>  Prange, E.: The use of information sets in decoding cyclic codes. IRE Transactions IT-8(1962) S5–S9
 

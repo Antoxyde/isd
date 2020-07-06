@@ -33,6 +33,9 @@ pranges = [load_run(runfile) for runfile in glob.glob("runs/prange_48h/*")]
 stern = [load_run(runfile) for runfile in glob.glob("runs/stern_48h/*")]
 stern_3pass = [load_run(runfile) for runfile in glob.glob("runs/stern_multiwin_48h/*")]
 
+print("Number of runs with Prange48h : {}".format(len(pranges)))
+print("Number of runs with Stern48h : {}".format(len(stern)))
+print("Number of runs with Stern multiwin 48h : {}".format(len(stern_3pass)))
 
 print("Min found with Prange48h : {}".format(min(run[1][-1] for run in pranges)))
 print("Min found with Stern48h : {}".format(min(run[1][-1] for run in stern)))

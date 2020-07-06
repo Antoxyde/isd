@@ -11,14 +11,14 @@
 #define N 1280
 #define K 640
 
-mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m, uint64_t c) {
+mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m, uint64_t c, uint64_t discard_threshold, uint64_t discard_nwords) {
 
     // Time mesuring stuff
     clock_t start = clock(), current;
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0;
+    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0, total = 0, done = 0;
 
     rci_t comb1[p], comb2[p], min_comb[2*p],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     int min_wt = K - 1, wt = 0;
@@ -359,31 +359,41 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
                     //printf("DBG mwin = %lu, linear comb is : \n", mwin);
                     //printbin(linear_comb_next, 640);
 
-                    wt = popcnt64_unrolled(linear_comb_next, 10 /* K/64 */);
+                    wt = popcnt64_unrolled(linear_comb_next, discard_nwords);
+                    total++;
 
-                    if (wt < min_wt) {
+                    // Early abort
+                    // For nwords = 7, ~233 is discarding 90% of the codewords
+                    if (wt < discard_threshold) {
+                        done++;
 
-                        // Save the new min weight and the indexes of th e linear combination to obtain it
-                        current = clock();
-                        elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
-                        printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt + 2*p);
+                        wt += popcnt64_unrolled(linear_comb_next + discard_nwords , 10 /* K/64 */ - discard_nwords);
 
-                        min_wt = wt;
 
-                        // Save the indexes of the LC
-                        min_comb[0] = lc_tab_alias_second_sorted[mwin][index_second].index1;
-                        min_comb[1] = lc_tab_alias_second_sorted[mwin][index_second].index2;
-                        min_comb[2] = lc_tab_alias_third_sorted[mwin][index_third].index1;
-                        min_comb[3] = lc_tab_alias_third_sorted[mwin][index_third].index2;
+                        if (wt < min_wt) {
 
-                        memcpy(min_cw, linear_comb_next, 80 /* K/8 */);
-                        memcpy(column_perms_copy, column_perms, N * sizeof(rci_t));
+                            // Save the new min weight and the indexes of th e linear combination to obtain it
+                            current = clock();
+                            elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+                            printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt + 2*p);
 
-                        mzd_t* cw = stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
-                        print_cw(cw);
-                        mzd_free(cw);
+                            min_wt = wt;
 
-                        fflush(stdout);
+                            // Save the indexes of the LC
+                            min_comb[0] = lc_tab_alias_second_sorted[mwin][index_second].index1;
+                            min_comb[1] = lc_tab_alias_second_sorted[mwin][index_second].index2;
+                            min_comb[2] = lc_tab_alias_third_sorted[mwin][index_third].index1;
+                            min_comb[3] = lc_tab_alias_third_sorted[mwin][index_third].index2;
+
+                            memcpy(min_cw, linear_comb_next, 80 /* K/8 */);
+                            memcpy(column_perms_copy, column_perms, N * sizeof(rci_t));
+
+                            mzd_t* cw = stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
+                            print_cw(cw);
+                            mzd_free(cw);
+
+                            fflush(stdout);
+                        }
                     }
                 }
             }
@@ -406,6 +416,7 @@ mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t time_sec, uint64_t 
 #endif
     printf("# Total number of iterations done : %lu\n", iter);
     printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);
+    printf("# word analysed, total words, ratio : %lu, %lu, %.3f\n", done, total, (double)done/(double)total);
 
     mzd_t* result =  stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
 

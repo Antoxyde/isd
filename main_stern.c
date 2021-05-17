@@ -9,7 +9,7 @@
 #include <math.h>
 
 
-int main(int argc, char** argv) {
+int main(void) {
 
     uint64_t time_sec = 10;
     char *challenge_file = "challenges/LW_1280_1";
@@ -46,7 +46,6 @@ int main(int argc, char** argv) {
 
     //uint64_t seed[4] = {1,2,3,4};
     //xoshiro256starstar_random_set(seed);
-
 
     uint32_t n = 1280; // Size of the instance
     mzd_t* G = mzd_init(n/2, n);

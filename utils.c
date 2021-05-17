@@ -94,8 +94,6 @@ void print_cw(mzd_t* cw) {
     printf("\n");
 }
 
-
-
 void rref_to_systematic(mzd_t* M, rci_t* perms) {
 
     rci_t n = M->ncols, cur, old;
@@ -105,10 +103,10 @@ void rref_to_systematic(mzd_t* M, rci_t* perms) {
 
         mzd_transpose(Mt, M);
 
-        // find a column with only one 1 in the right part of M
+        // Find a column with only one 1 in the right part of M
         for (cur = n/2; cur < n && popcnt(mzd_row(Mt, cur), n/16) != 1; cur++);
 
-        // find a column with more than one 1 in the left part of M
+        // Find a column with more than one 1 in the left part of M
         for (old = 0; old < n/2 && popcnt(mzd_row(Mt, old), n/16) == 1; old++);
 
         // And swap them
@@ -188,4 +186,18 @@ mzd_t* prange_reconstruct_cw(rci_t row_min_cw, rci_t* column_perms, mzd_t* min_c
     mzd_free(min_cw_full);
 
     return result;
+}
+
+// Does not take care about overflows
+uint64_t binomial(uint64_t n, uint64_t k) {
+    if (k > n) return 0;
+    if (k == 0 || k == n) return 1;
+
+    k = MIN(k, n - k);
+    uint64_t c = 1;
+    
+    for (uint64_t i = 0; i < k; i++) {
+        c = c * (n - i) / (i + 1);
+    } 
+    return c;
 }

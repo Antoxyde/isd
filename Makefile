@@ -37,4 +37,6 @@ clean:
 	rm -f $(EXECUTABLES) *.o
 
 nns:
-	gcc -o nns_test nns_test.c -lm4ri
+	gcc -g -fsanitize=address -c utils.c -o utils.o
+	gcc -g -fsanitize=address -c nns_test.c -o nns_test.o
+	gcc -g -fsanitize=address -o nns_test nns_test.o utils.o -lasan -lm4ri

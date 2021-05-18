@@ -1,5 +1,6 @@
 #include "libpopcnt.h"
 #include "utils.h"
+#include "xoshiro256starstar.h"
 
 void fisher_yates_shuffle(rci_t* values, size_t size) {
 
@@ -200,4 +201,28 @@ uint64_t binomial(uint64_t n, uint64_t k) {
         c = c * (n - i) / (i + 1);
     } 
     return c;
+}
+
+
+// Must have c < 64
+void matrix_randomize(mzd_t* M, int r, int c) {
+    for(int i = 0; i < r; i++) {
+        uint64_t rnd = xoshiro256starstar_random() & ((1ULL << c) - 1);
+        uint64_t* alias_row = mzd_row(M, i);
+        *alias_row = rnd;
+    }
+}
+
+mzd_t* get_random_fullrank(int r, int c) {
+
+    mzd_t* M = mzd_init(r, c);
+    mzd_t* M2 = mzd_init(r, c);
+
+    do {
+        matrix_randomize(M, r, c);
+        mzd_copy(M2, M);
+    } while (mzd_echelonize(M2, 0) != MIN(r,c));
+    
+    mzd_free(M2);
+    return M;
 }

@@ -5,6 +5,7 @@
 
 #include "utils.h"
 #include "libpopcnt.h"
+#include "xoshiro256starstar.h"
 
 int test_matrix_tabulation(mzd_t* H, uint64_t* H1tab, uint64_t* H2tab, uint64_t n, uint64_t k) {
     printf("Testing matrix tabulation..\n");    
@@ -34,15 +35,36 @@ int test_matrix_tabulation(mzd_t* H, uint64_t* H1tab, uint64_t* H2tab, uint64_t 
     return 1;
 }
 
-int test_syndrome_table(uint64_t* SM,uint64_t* Httab1, uint64_t* Httab2, uint64_t n, uint64_t k) {
+int test_syndrome_table(uint64_t* SM,uint64_t* Httab1, uint64_t* Httab2, uint64_t n, uint64_t k, mzd_t* Ht) {
     printf("Starting syndrome table test...\n");
 
     // Full test should be on all 2^n vectors, but depending on n it might be too expensive
     for (uint64_t e = 1; e < (1ULL << MIN(n, 26)); e++) { 
         uint64_t s = Httab2[e >> n/2] ^ Httab1[e & ((1 << n/2) - 1)];
+        
+        uint64_t w1 = popcnt64_unrolled(&SM[s], 1);
+        uint64_t w2 = popcnt64_unrolled(&e, 1);
+        printf("w1=%lu, w2=%lu\n", w1, w2);
+        if (w1 > w2) {
+            printf("Syndrome table test failed; for syndrome s=%lu SM[s] = %lu (wt : %lu), but a smaller error exists : %lu (wt : %lu) \n", s, SM[s], w1, e, w2);
 
-        if (popcnt64_unrolled(&SM[s], n) > popcnt64_unrolled(&e, n)) {
-            printf("Syndrome table test failed; for syndrome s=%lx, a smaller error exists : %lx (SM[s] = %lx)\n", s, e, SM[s]);
+            printf("verif : \n");
+            mzd_t* vec = mzd_init(1, n);
+            mzd_t* res = mzd_init(1, n-k);
+            uint64_t* alias_vec = mzd_row(vec, 0);
+            uint64_t* alias_res = mzd_row(res, 0);
+
+            *alias_vec = SM[s];
+            mzd_mul(res, vec, Ht, 0);
+            printf("SM syn mzd_mul : %lu\n", *alias_res);
+
+            *alias_vec = e;
+            mzd_mul(res, vec, Ht, 0);
+            printf("e syn mzd_mul : %lu\n", *alias_res);
+
+            printf("SM[s] syn mano : %lu\n", Httab2[SM[s] >> n/2] ^ Httab1[SM[s] & ((1 << n/2) - 1)]);
+            printf("e syn mano : %lu\n", Httab2[e >> n/2] ^ Httab1[e & ((1 << n/2) - 1)]);
+
             return 0;
         }
     }
@@ -88,12 +110,13 @@ int create_syndrome_table(uint64_t* SM, mzd_t* Ht, uint64_t* Httab1, uint64_t* H
         syn = Httab2[w >> n/2] ^ Httab1[w & ((1 << n/2) - 1)];
         
         nbiter = binomial(n, i);
-        printf("wt(e) = %ld, nb possibilities = %lu\n", i, nbiter);
+        //printf("wt(e) = %ld, nb possibilities = %lu\n", i, nbiter);
         for (j = 0 ; j < nbiter; j++) {
             total++; 
             if (SM[syn] == 0) {
                 count++;
                 SM[syn] = w;
+                printf("s=%lu => e=%lu\n", syn, w);
             }
 
             if (count == (1ULL << (n-k))) { 
@@ -109,11 +132,26 @@ int create_syndrome_table(uint64_t* SM, mzd_t* Ht, uint64_t* Httab1, uint64_t* H
                 // Get the 2 indices that changed from last iteration
                 changes = old ^ w;
                 // trailing zeroes, starting at LSB
-                int i1 = __builtin_ctz(changes);
+                int i1 = __builtin_ctzll(changes);
                 // trailing zeroes, starting at MSB
-                int i2 = 31 - __builtin_clz(changes);
+                int i2 = 63 - __builtin_clzll(changes);
 
                 syn ^= (*mzd_row(Ht, i1)) ^ (*mzd_row(Ht, i2));
+
+                mzd_t* v = mzd_init(1,n);
+                mzd_t* r = mzd_init(1,n-k);
+                uint64_t* alias_v = mzd_row(v, 0);
+                uint64_t* alias_r = mzd_row(r, 0);
+
+                *alias_v = w;
+                mzd_mul(r, v, Ht, 0);
+                if (*alias_r == syn) {
+                    printf("OK %lu %lu\n", i, j);
+                } else {
+                    printf("PASBON %lu %lu, (i1=%d,i2=%d)\n", i, j, i1, i2);
+                    printf("%lu should be %d\n", syn, *alias_r);
+                }
+
             }
         }
 
@@ -131,22 +169,11 @@ int create_syndrome_table(uint64_t* SM, mzd_t* Ht, uint64_t* Httab1, uint64_t* H
     return 1;
 }
 
-mzd_t* get_random_fullrank(int r, int c) {
-
-    mzd_t* M = mzd_init(r, c);
-    mzd_t* M2 = mzd_init(r, c);
-
-    do {
-        mzd_randomize(M);
-        mzd_copy(M2, M);
-    } while (mzd_echelonize(M2, 0) != MIN(r,c));
-    
-    mzd_free(M2);
-    return M;
-}
 int main(void) {
     
-    uint64_t n = 40, k = 20;
+    //xoshiro256starstar_random_set((uint64_t[4]){1,3,3,8});
+
+    uint64_t n = 10, k = 5;
 
     mzd_t* Ink = mzd_init(n-k,n-k);
     // n-k identity matrix
@@ -168,7 +195,7 @@ int main(void) {
     test_matrix_tabulation(Ht, Httab1, Httab2, n, k);
 
     create_syndrome_table(SM, Ht, Httab1, Httab2, n, k);
-    test_syndrome_table(SM, Httab1, Httab2, n, k);
+    test_syndrome_table(SM, Httab1, Httab2, n,k, Ht);
 
     printf("Syndrome table generated, all okay.\n");
 

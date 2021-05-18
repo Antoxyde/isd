@@ -41,6 +41,12 @@ mzd_t* prange_reconstruct_cw(rci_t row_min_cw, rci_t* column_perms, mzd_t* min_c
 
 uint64_t binomial(uint64_t n, uint64_t k);
 
+// Only for up to 64x64
+void matrix_randomize(mzd_t* M, int r, int c);
+
+// Only for up to 64x64
+mzd_t* get_random_fullrank(int r, int c);
+
 #endif
 
 

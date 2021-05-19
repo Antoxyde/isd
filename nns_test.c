@@ -44,7 +44,6 @@ int test_syndrome_table(uint64_t* SM,uint64_t* Httab1, uint64_t* Httab2, uint64_
         
         uint64_t w1 = popcnt64_unrolled(&SM[s], 1);
         uint64_t w2 = popcnt64_unrolled(&e, 1);
-        printf("w1=%lu, w2=%lu\n", w1, w2);
         if (w1 > w2) {
             printf("Syndrome table test failed; for syndrome s=%lu SM[s] = %lu (wt : %lu), but a smaller error exists : %lu (wt : %lu) \n", s, SM[s], w1, e, w2);
 
@@ -103,56 +102,36 @@ int create_syndrome_table(uint64_t* SM, mzd_t* Ht, uint64_t* Httab1, uint64_t* H
     printf("Creating syndrome table...\n");
     uint64_t count = 0, total = 0, t, old, w, syn, nbiter, i, j, changes;
 
+
+    mzd_t* v = mzd_init(1,n);
+    mzd_t* r = mzd_init(1,n-k);
+    uint64_t* alias_v = mzd_row(v, 0);
+    uint64_t* alias_r = mzd_row(r, 0);
+
     // Create all linear combinations of i rows of H, with i=1..n-k-1
     for (i = 1; i < n; i++) { 
 
         w = (1ULL << i) - 1; // i first bits to 1
-        syn = Httab2[w >> n/2] ^ Httab1[w & ((1 << n/2) - 1)];
         
         nbiter = binomial(n, i);
-        //printf("wt(e) = %ld, nb possibilities = %lu\n", i, nbiter);
         for (j = 0 ; j < nbiter; j++) {
             total++; 
+
+            syn = Httab2[w >> n/2] ^ Httab1[w & ((1 << n/2) - 1)];
             if (SM[syn] == 0) {
                 count++;
                 SM[syn] = w;
-                printf("s=%lu => e=%lu\n", syn, w);
             }
 
             if (count == (1ULL << (n-k))) { 
                 break;
             }
-            
-            if (j < nbiter-1) {
-                old = w;
-                // get next permutation of i bits, see https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation
-                t = w | (w - 1);
-                w = (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctz(old) + 1));  
-                
-                // Get the 2 indices that changed from last iteration
-                changes = old ^ w;
-                // trailing zeroes, starting at LSB
-                int i1 = __builtin_ctzll(changes);
-                // trailing zeroes, starting at MSB
-                int i2 = 63 - __builtin_clzll(changes);
 
-                syn ^= (*mzd_row(Ht, i1)) ^ (*mzd_row(Ht, i2));
+            // get next permutation of i bits, see https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation
+            old = w; 
+            t = w | (w - 1);
+            w = (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctzll(old) + 1));  
 
-                mzd_t* v = mzd_init(1,n);
-                mzd_t* r = mzd_init(1,n-k);
-                uint64_t* alias_v = mzd_row(v, 0);
-                uint64_t* alias_r = mzd_row(r, 0);
-
-                *alias_v = w;
-                mzd_mul(r, v, Ht, 0);
-                if (*alias_r == syn) {
-                    printf("OK %lu %lu\n", i, j);
-                } else {
-                    printf("PASBON %lu %lu, (i1=%d,i2=%d)\n", i, j, i1, i2);
-                    printf("%lu should be %d\n", syn, *alias_r);
-                }
-
-            }
         }
 
         if (count == (1ULL << (n-k))) { 
@@ -171,15 +150,17 @@ int create_syndrome_table(uint64_t* SM, mzd_t* Ht, uint64_t* Httab1, uint64_t* H
 
 int main(void) {
     
-    //xoshiro256starstar_random_set((uint64_t[4]){1,3,3,8});
+    xoshiro256starstar_random_set((uint64_t[4]){1,3,3,8});
 
-    uint64_t n = 10, k = 5;
+    uint64_t n = 40, k = 18;
 
     mzd_t* Ink = mzd_init(n-k,n-k);
     // n-k identity matrix
     for (int i = 0; i < n-k; i++) mzd_write_bit(Ink, i, i, 1);
     
-    mzd_t* M = get_random_fullrank(k, n-k);
+    mzd_t* M = get_random_fullrank(n-k, k);
+    mzd_info(M, 0);
+    mzd_info(Ink, 0);
     mzd_t* H = mzd_concat(NULL,  M, Ink); // H = [M | I_{n-k}]
     mzd_t* Ht = mzd_transpose(NULL, H);
 

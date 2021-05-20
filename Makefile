@@ -34,15 +34,8 @@ main_stern: utils.o main_stern.o  stern.o #libm4ri-0.0.20200125.so
 main_prange: utils.o main_prange.o prange.o #libm4ri-0.0.20200125.so
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-nns_test: utils.o nns_test.o 
+nns_test: utils.o nns_test.o  buckets.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 clean:
 	rm -f $(EXECUTABLES) *.o
 
-nns:
-	#gcc -g -fsanitize=address -c utils.c -o utils.o
-	#gcc -g -fsanitize=address -c nns_test.c -o nns_test.o
-	#gcc -g -fsanitize=address -o nns_test nns_test.o utils.o -lasan -lm4ri
-	gcc -c utils.c -o utils.o
-	gcc -O3 -c nns_test.c -o nns_test.o
-	gcc -O3 -o nns_test nns_test.o utils.o -lm4ri

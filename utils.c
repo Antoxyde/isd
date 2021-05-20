@@ -226,3 +226,9 @@ mzd_t* get_random_fullrank(int r, int c) {
     mzd_free(M2);
     return M;
 }
+
+
+uint64_t gv_bound(uint64_t n, uint64_t k) {
+    // todo
+    return n*k;
+}

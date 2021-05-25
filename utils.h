@@ -46,6 +46,7 @@ void matrix_randomize(mzd_t* M, int r, int c);
 
 // Only for up to 64x64
 mzd_t* get_random_fullrank(int r, int c);
+uint64_t gv_bound(uint64_t n, uint64_t k);
 
 #endif
 

@@ -6,7 +6,13 @@
 #include "utils.h"
 #include "buckets.h"
 
-bucket** bucket_init(size_t nb_buckets) {
+static size_t default_bucketsize = 0;
+static size_t default_bucketinc = 0;
+
+bucket** bucket_init(size_t nb_buckets, size_t bucketsize, size_t bucketinc) {
+
+    default_bucketsize = bucketsize;
+    default_bucketinc = bucketinc;
 
     bucket** buckets = calloc(nb_buckets,  sizeof(bucket*));
     if (!buckets) {
@@ -23,7 +29,7 @@ void bucket_put(bucket** buckets,  uint64_t key, uint64_t data) {
 
     if (!b) {
         b = malloc(sizeof(bucket));
-        b->maxlen = 500;
+        b->maxlen = default_bucketsize;
         b->curlen = 0;
         b->tab = malloc(b->maxlen * sizeof(uint64_t));
         CHECK_MALLOC(b->tab);
@@ -31,7 +37,7 @@ void bucket_put(bucket** buckets,  uint64_t key, uint64_t data) {
     }
     
     if (b->curlen == b->maxlen) {
-        b->maxlen += 10;
+        b->maxlen += default_bucketinc;
         b->tab = realloc(b->tab, b->maxlen * sizeof(uint64_t));
         CHECK_MALLOC(b->tab);
     }

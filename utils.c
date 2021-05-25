@@ -229,6 +229,10 @@ mzd_t* get_random_fullrank(int r, int c) {
 
 
 uint64_t gv_bound(uint64_t n, uint64_t k) {
-    // todo
-    return n*k;
+    uint64_t max = 1ULL << (n-k);
+    uint64_t d, s = 0;
+    for (d = 1;s < max; d++) {
+        s += binomial(n, d);
+    }
+    return d;
 }

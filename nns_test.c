@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <m4ri/m4ri.h>
+//#include <malloc.h>
 
 #include "utils.h"
 #include "libpopcnt.h"
@@ -130,24 +131,36 @@ int create_syndrome_table(uint64_t* SM, TabulatedMat* Httab, uint64_t n, uint64_
     return 1;
 }
 
-void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_t k) {
+void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_t k, uint64_t nbvec) {
 
-    bucket** buckets = bucket_init(1ULL << k);
+    if (nbvec <= k) {
+        printf("Nbvec has to be at least greater than k. (nbvec=%lu,k=%lu)\n", nbvec, k);
+        return;
+    }
+
+    bucket** buckets = bucket_init(1ULL << k, 1ULL << (nbvec - k),32);
     uint64_t s, x, xc, e, w, i;
     uint64_t min_blen, max_blen;
     double av_blen;
-
-    uint64_t nbvec = 27;
+    uint64_t perc = (1ULL << MIN(nbvec, n)) / 100;
     
     printf("Populating buckets with 2^%lu vectors..\n", MIN(nbvec,n));
+
     for (i = 0; i < (1ULL << MIN(nbvec, n)); i++) {
         x = xoshiro256starstar_random() & ((1ULL << n) - 1);
         s = TABULATED_MATMUL(x, Httab, n);
         e = SM[s];
         xc = (x ^ e) & ((1ULL << k) - 1);
         bucket_put(buckets, xc, x);
+
+        if (i % perc == 0) {
+            printf("\r%lu%%", i / perc);
+            fflush(stdout);
+        }
     }
     
+    printf("\r");
+    fflush(stdout);
 
     mzd_t* cw = mzd_init(1, n);
     mzd_t* v = mzd_init(1, k);
@@ -156,23 +169,22 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     uint64_t dmin = n - k + 1; 
     uint64_t nb_empty_bucket = 0;
     double dinter = 0.0;
+    perc = (1ULL << k) / 100;
+    
+    min_blen = max_blen = buckets[0]->curlen;
+    av_blen = 0;
+    
+    printf("Making stats for each bucket..\n");
+    // For each bucket
+    for (i = 0; i < (1ULL << k); i++) {
 
-    for (x = 0; x < (1ULL << k); x++) {
-        *v_alias = x;
-        mzd_mul(cw, v, G, 0);
+        *v_alias = i;
+        mzd_mul(cw, v, G, 0); // TODO : tabulate G also?
         w = popcnt64_unrolled(cw_alias, 1);
         if (w > 0) {
             dmin = MIN(dmin,  w);
         }
-    }
-     
-    printf("Min weight : %lu \n", dmin);
-        
-    min_blen = max_blen = buckets[0]->curlen;
-    av_blen = 0;
-    
-    // For each bucket
-    for (i = 1; i < (1ULL << k); i++) {
+
         bucket* b = buckets[i];
         double tot = 0.0;
         if (b && b->curlen > 1) {
@@ -183,6 +195,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
                     tot += (double)popcnt64_unrolled(&r, 1);
                 }
             }
+
             tot /= ((double)b->curlen * (b->curlen - 1))/2;
         } else {
             nb_empty_bucket++;
@@ -194,26 +207,45 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
             max_blen = MAX(min_blen, b->curlen);
         }
 
-        //printf("mean internal %lu : %lf\n", i, tot);
         dinter += tot;
+
+        if (i % perc == 0) {
+            printf("\r%lu%%", i / perc);
+            fflush(stdout);
+        }
     }
+
+    printf("\r");
+    fflush(stdout);
     
     av_blen /= (double)(1 << k);
     dinter /= (double)((1 << k) - nb_empty_bucket);
-    printf("Average internal distance : %lf\n", dinter);
-    //printf("Average number of element per bucket: %lu\n", nb_elem);
-    printf("Number of empty bucket : %lu\n", nb_empty_bucket);
-
-    printf("Av. number of elemen / bucket : %lf (min : %lu, max : %lu)\n", av_blen, min_blen, max_blen);
-
+    
+    printf("n                                  %lu\n", n);
+    printf("k                                  %lu\n", k);
+    printf("Number of vector in F^2_n hashed   2^%lu\n", MIN(nbvec, n));
+    printf("Theoretical min weight (GV bound)  %lu\n", gv_bound(n, k));    
+    printf("Practical min weight               %lu \n", dmin);
+    printf("Average internal distance          %lf\n", dinter);
+    printf("Number of empty bucket             %lu\n", nb_empty_bucket);
+    printf("Min elements / bucket              %lu\n", nb_empty_bucket == 0 ? min_blen : 0);
+    printf("Max elements / bucket              %lu\n", max_blen);
+    
     bucket_free(buckets, 1ULL << k);
     mzd_free(cw);
 }
 
-int main(void) {
+int main(int argc, char** argv) {
     
     //xoshiro256starstar_random_set((uint64_t[4]){1,3,3,8});
-    uint64_t n = 40, k = 18;
+    if (argc < 4) {
+        printf("Usage : %s n k nbvec\n" , argv[0]);
+        return 1;
+    }
+    
+    uint64_t n = atoll(argv[1]);
+    uint64_t k = atoll(argv[2]);
+    uint64_t nbvec = atoll(argv[3]);
 
     mzd_t* Ink = mzd_init(n-k,n-k);
     mzd_t* Ik = mzd_init(k,k);
@@ -237,14 +269,14 @@ int main(void) {
     CHECK_MALLOC(SM);
     
     tabulate_matrix(Ht, &Httab, n, k);
-    if (!test_matrix_tabulation(Ht, &Httab, n, k)) return -1;
+    //if (!test_matrix_tabulation(Ht, &Httab, n, k)) return -1;
 
     create_syndrome_table(SM, &Httab, n, k);
-    if (!test_syndrome_table(SM, &Httab, n)) return -1;
+    //if (!test_syndrome_table(SM, &Httab, n)) return -1;
     
     printf("Syndrome table generated.\n");
 
-    make_stats(SM, &Httab, G, n, k);
+    make_stats(SM, &Httab, G, n, k, nbvec);
 
     mzd_free(H);
     mzd_free(Ht);

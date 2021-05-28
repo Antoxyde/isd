@@ -143,6 +143,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     uint64_t min_blen, max_blen;
     double av_blen;
     uint64_t perc = (1ULL << MIN(nbvec, n)) / 100;
+    uint64_t *weights = calloc(sizeof(uint64_t) , k+1);
     
     printf("Populating buckets with 2^%lu vectors..\n", MIN(nbvec,n));
 
@@ -192,7 +193,9 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
             for (int j = 0; j < b->curlen; j++) {
                 for (int k = j+1; k < b->curlen; k++) {
                     uint64_t r = b->tab[j] ^ b->tab[k];
-                    tot += (double)popcnt64_unrolled(&r, 1);
+                    uint64_t w = (double)popcnt64_unrolled(&r, 1);
+                    tot += w;
+                    weights[w] += 1;
                 }
             }
 
@@ -230,9 +233,22 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     printf("Number of empty bucket             %lu\n", nb_empty_bucket);
     printf("Min elements / bucket              %lu\n", nb_empty_bucket == 0 ? min_blen : 0);
     printf("Max elements / bucket              %lu\n", max_blen);
+    printf("G                                  ");
+    for (int i = 0; i < k; i++)
+        printf("%lX ", *(uint64_t*)(mzd_row(G, i)));
+
+    printf("\n");
+
+    printf("Weight distrib                      ");
+    for (int i = 0; i < k+1; i++) {
+        printf("%d:%lu ", i, weights[i]);
+    }
+    printf("\n");
+
     
     bucket_free(buckets, 1ULL << k);
     mzd_free(cw);
+    free(weights);
 }
 
 int main(int argc, char** argv) {

@@ -1,0 +1,11 @@
+n                                  40
+k                                  18
+Number of vector in F^2_n hashed   2^25
+Theoretical min weight (GV bound)  7
+Practical min weight               6 
+Average internal distance          10.350196
+Number of empty bucket             0
+Min elements / bucket              80
+Max elements / bucket              107
+G                                  CFF3000001 5D88B00002 D59F200004 9DC19C0008 3E03680010 52B8B00020 5D87780040 D611C0080 3D4A880100 72EDF80200 7682E80400 40FBB40800 B4EABC1000 3FF7D82000 57D7804000 F347888000 2B67690000 CA2620000 
+Weight distrib                      549 6222 74241 498790 2791633 10920785 36560379 91028748 195638824 318241972 437427876 450799811 354636471 199804635 48279235 764316 2344 0 0 

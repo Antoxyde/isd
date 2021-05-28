@@ -145,7 +145,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     uint64_t perc = (1ULL << MIN(nbvec, n)) / 100;
     uint64_t *weights = calloc(sizeof(uint64_t) , k+1);
     
-    printf("Populating buckets with 2^%lu vectors..\n", MIN(nbvec,n));
+    //printf("Populating buckets with 2^%lu vectors..\n", MIN(nbvec,n));
 
     for (i = 0; i < (1ULL << MIN(nbvec, n)); i++) {
         x = xoshiro256starstar_random() & ((1ULL << n) - 1);
@@ -153,15 +153,16 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
         e = SM[s];
         xc = (x ^ e) & ((1ULL << k) - 1);
         bucket_put(buckets, xc, x);
-
+	/*
         if (i % perc == 0) {
             printf("\r%lu%%", i / perc);
             fflush(stdout);
         }
+	*/
     }
     
-    printf("\r");
-    fflush(stdout);
+    //printf("\r");
+    //fflush(stdout);
 
     mzd_t* cw = mzd_init(1, n);
     mzd_t* v = mzd_init(1, k);
@@ -175,7 +176,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     min_blen = max_blen = buckets[0]->curlen;
     av_blen = 0;
     
-    printf("Making stats for each bucket..\n");
+    //printf("Making stats for each bucket..\n");
     // For each bucket
     for (i = 0; i < (1ULL << k); i++) {
 
@@ -211,15 +212,16 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
         }
 
         dinter += tot;
-
+	/*
         if (i % perc == 0) {
             printf("\r%lu%%", i / perc);
             fflush(stdout);
         }
+	*/
     }
 
-    printf("\r");
-    fflush(stdout);
+    //printf("\r");
+    //fflush(stdout);
     
     av_blen /= (double)(1 << k);
     dinter /= (double)((1 << k) - nb_empty_bucket);
@@ -241,7 +243,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
 
     printf("Weight distrib                      ");
     for (int i = 0; i < k+1; i++) {
-        printf("%d:%lu ", i, weights[i]);
+        printf("%lu ", weights[i]);
     }
     printf("\n");
 
@@ -290,7 +292,7 @@ int main(int argc, char** argv) {
     create_syndrome_table(SM, &Httab, n, k);
     //if (!test_syndrome_table(SM, &Httab, n)) return -1;
     
-    printf("Syndrome table generated.\n");
+    //printf("Syndrome table generated.\n");
 
     make_stats(SM, &Httab, G, n, k, nbvec);
 

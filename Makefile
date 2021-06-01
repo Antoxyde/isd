@@ -11,8 +11,8 @@ else
 endif
 
 CC=gcc
-CFLAGS=-Ofast
-#CFLAGS=-g -fsanitize=address -Wextra -Wall -Werror --std=c99 -mbmi -DDEBUG
+CFLAGS=-Ofast -I=.
+#CFLAGS=-g -fsanitize=address -Wextra -Wall -Werror --std=c99 -mbmi -DDEBUG -DPROGRESS
 LDFLAGS=-lm4ri
 EXECUTABLES=nns_test
 

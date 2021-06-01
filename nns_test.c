@@ -9,6 +9,8 @@
 #include "xoshiro256starstar.h"
 #include "buckets.h"
 
+#define PROGRESS
+
 typedef struct TabulatedMat_ {
     uint64_t* t1,*t2;
 } TabulatedMat;
@@ -54,6 +56,7 @@ int test_syndrome_table(uint64_t* SM,TabulatedMat* Httab, uint64_t n) {
         
         uint64_t w1 = popcnt64_unrolled(&SM[s], 1);
         uint64_t w2 = popcnt64_unrolled(&e, 1);
+
         if (w1 > w2) {
             printf("Syndrome table test failed; for syndrome s=%lu SM[s] = %lu (wt : %lu), but a smaller error exists : %lu (wt : %lu) \n", s, SM[s], w1, e, w2);
             return 0;
@@ -139,30 +142,37 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     }
 
     bucket** buckets = bucket_init(1ULL << k, 1ULL << (nbvec - k),32);
-    uint64_t s, x, xc, e, w, i;
+    uint64_t s, x, key, e, w, i;
     uint64_t min_blen, max_blen;
     double av_blen;
-    uint64_t perc = (1ULL << MIN(nbvec, n)) / 100;
-    uint64_t *weights = calloc(sizeof(uint64_t) , k+1);
+    uint64_t *weights = calloc(sizeof(uint64_t) , n+1);
     
-    //printf("Populating buckets with 2^%lu vectors..\n", MIN(nbvec,n));
+#ifdef PROGRESS
+    uint64_t perc = (1ULL << MIN(nbvec, n)) / 100;
+    printf("Populating buckets with 2^%lu vectors..\n", MIN(nbvec,n));
+#endif
 
     for (i = 0; i < (1ULL << MIN(nbvec, n)); i++) {
         x = xoshiro256starstar_random() & ((1ULL << n) - 1);
         s = TABULATED_MATMUL(x, Httab, n);
         e = SM[s];
-        xc = (x ^ e) & ((1ULL << k) - 1);
-        bucket_put(buckets, xc, x);
-	/*
+        key = (x ^ e) & ((1ULL << k) - 1);
+        bucket_put(buckets, key, x);
+
+#ifdef PROGRESS
         if (i % perc == 0) {
             printf("\r%lu%%", i / perc);
             fflush(stdout);
         }
-	*/
+#endif
     }
-    
-    //printf("\r");
-    //fflush(stdout);
+
+#ifdef PROGRESS
+    printf("\r");
+    fflush(stdout);
+    perc = (1ULL << k) / 100;
+    printf("Making stats for each bucket..\n");
+#endif
 
     mzd_t* cw = mzd_init(1, n);
     mzd_t* v = mzd_init(1, k);
@@ -171,12 +181,10 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     uint64_t dmin = n - k + 1; 
     uint64_t nb_empty_bucket = 0;
     double dinter = 0.0;
-    perc = (1ULL << k) / 100;
     
     min_blen = max_blen = buckets[0]->curlen;
     av_blen = 0;
-    
-    //printf("Making stats for each bucket..\n");
+
     // For each bucket
     for (i = 0; i < (1ULL << k); i++) {
 
@@ -190,12 +198,15 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
         bucket* b = buckets[i];
         double tot = 0.0;
         if (b && b->curlen > 1) {
-
+            //printf("bucket %lu, len %lu\n", i, b->curlen);
             for (int j = 0; j < b->curlen; j++) {
                 for (int k = j+1; k < b->curlen; k++) {
                     uint64_t r = b->tab[j] ^ b->tab[k];
+
+                    //printf("r:%08lX, j:%08lX, k: %08lX\n", r, b->tab[j], b->tab[k]);
                     uint64_t w = (double)popcnt64_unrolled(&r, 1);
                     tot += w;
+                    //printf("w=%lu,k+1=%u\n", w, k+1);
                     weights[w] += 1;
                 }
             }
@@ -212,16 +223,18 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
         }
 
         dinter += tot;
-	/*
-        if (i % perc == 0) {
+#ifdef PROGRESS 
+        if (perc && i % perc == 0) {
             printf("\r%lu%%", i / perc);
             fflush(stdout);
         }
-	*/
+#endif
     }
 
-    //printf("\r");
-    //fflush(stdout);
+#ifdef PROGRESS
+    printf("\r");
+    fflush(stdout);
+#endif
     
     av_blen /= (double)(1 << k);
     dinter /= (double)((1 << k) - nb_empty_bucket);

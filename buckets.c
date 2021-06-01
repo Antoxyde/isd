@@ -56,3 +56,16 @@ void bucket_free(bucket** buckets, size_t nb_buckets) {
 
     free(buckets);
 }
+
+void bucket_print(bucket** buckets, size_t nb_buckets) {
+    for (size_t i = 0; i < nb_buckets; i++) {
+        if (buckets[i]) {
+            printf("bucket %lX:\n", i);
+            for (size_t j = 0; j < buckets[i]->curlen; j++) {
+                printf("\t%08lX\n", buckets[i]->tab[j]);
+            }
+        } else {
+            printf("buckets %lX is empty.\n", i);
+        }
+    }
+}

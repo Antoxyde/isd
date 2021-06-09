@@ -3,9 +3,7 @@
 #include "utils.h"
 #include "libpopcnt.h"
 #include  "xoshiro256starstar.h"
-
 #include <time.h>
-
 
 mzd_t* isd_prange_canteaut_chabaud(mzd_t* G, uint64_t niter) {
 

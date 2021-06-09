@@ -10,7 +10,6 @@
 
 int main(int argc, char** argv) {
 
-
     uint64_t niter = 1000;
     char *challenge_file = "challenges/LW_1280_1";
 
@@ -24,7 +23,6 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
-
 
     //uint64_t seed[4] = {1,2,3,4};
     //xoshiro256starstar_random_set(seed);

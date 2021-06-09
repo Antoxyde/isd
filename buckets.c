@@ -41,7 +41,7 @@ void bucket_put(bucket** buckets,  uint64_t key, uint64_t data) {
         b->tab = realloc(b->tab, b->maxlen * sizeof(uint64_t));
         CHECK_MALLOC(b->tab);
     }
-
+    
     b->tab[b->curlen] = data;
     b->curlen++;
 }

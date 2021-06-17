@@ -24,7 +24,6 @@ bucket** bucket_init(size_t nb_buckets, size_t bucketsize, size_t bucketinc) {
 }
 
 void bucket_put(bucket** buckets,  uint64_t key, uint64_t data) {
-    assert(key < (1ULL << 25));
     bucket* b = buckets[key];
 
     if (!b) {

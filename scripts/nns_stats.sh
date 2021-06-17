@@ -9,9 +9,3 @@ for n in 42 44 46 48; do
 	    ./nns_test "$n" "$k" "$nbvec" > "$fname"
 	done
 done
-done
-
-
-
-
-

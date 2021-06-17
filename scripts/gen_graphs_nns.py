@@ -7,6 +7,11 @@ from math import log
 from dataclasses import dataclass
 from typing import List
 
+"""
+Generate graphs about code candidates for a good LSH
+Code candidates are in runs/nns_stats/ , and have been created with nns_test.c
+"""
+
 @dataclass
 class Entry:
     n: int
@@ -19,6 +24,7 @@ class Entry:
 
 def load_run(runfile):
     """
+    Format of a run file : 
     0 n                                  40
     1 k                                  18
     2 Number of vector in F^2_n hashed   2^25
@@ -72,12 +78,7 @@ def histo_weight():
 
 
 def hist_golay():
-    #golay = [2048, 24576, 135168, 450560, 1013760, 1622016, 1892352, 1622016, 1013760, 450560, 135168, 24576, 2048, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     golay = [0, 23928832, 263217152, 464257024, 2321285120, 1378263040, 4134789120, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # sage
-    #[0 23834624 262180864 457003008 2321428480 1378349056 4136194048 458752 3506176 491520 2293760 0 0 0 0 0 0 0 0 0 0 0 0 0] # nns test
-    #golay = list(map(lambda x : log(x, 2) if x != 0 else 0, [4192886, 23828762, 262296786, 456623726, 2322381021, 1376839128, 4137025102, 457887, 3495811 , 489395 ,2288285,0,0,0,0,0,0,0,0,0,0,0,0,0]))
-    #golay = list(map(int, "0 23834624 262180864 457003008 2321428480 1378349056 4136194048 458752 3506176 491520 2293760 0 0 0 0 0 0 0 0 0 0 0 0 0".split(" ")))
-    golay = list(map(lambda x : log(x, 2) if x != 0 else 0, golay))
     
     labels = map(str, range(len(golay)))
     plt.xticks(range(len(golay)), labels)
@@ -127,8 +128,8 @@ def stats():
     print("max : ", max(runs))
           
 min_max()
-#histo_weight()
-#hist_golay()
-#minw_dinter()
-#comp_length()
-#stats()
+histo_weight()
+hist_golay()
+minw_dinter()
+comp_length()
+stats()

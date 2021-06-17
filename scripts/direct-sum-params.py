@@ -1,17 +1,6 @@
 from sage.all import *
 import itertools
 
-"""
-Cs = [
-        codes.HammingCode(GF(2), 1),
-        codes.HammingCode(GF(2), 2),
-        codes.HammingCode(GF(2), 3),
-        codes.HammingCode(GF(2), 4),
-        codes.HammingCode(GF(2), 5),
-        codes.GolayCode(GF(2),extended=False),
-    ]
-"""
-
 Cs = [
         (3,1,1), # H2
         (7,4,1), # H3

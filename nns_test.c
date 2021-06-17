@@ -21,6 +21,8 @@ typedef struct TabulatedMat_ {
 */
 #define TABULATED_MATMUL(w, Mtab, n) Mtab->t2[w >> n/2] ^ Mtab->t1[w & ((1 << n/2) - 1)]
 
+/* Verify that tabulated matrix-vector product is okay
+ * for 2^k vectors */
 int test_matrix_tabulation(mzd_t* Ht, TabulatedMat* Httab, uint64_t n, uint64_t k) {
 
 #ifdef DEBUG
@@ -53,6 +55,8 @@ int test_matrix_tabulation(mzd_t* Ht, TabulatedMat* Httab, uint64_t n, uint64_t 
     return 1;
 }
 
+/* Verify that syndrome table is correct
+ * by looking at the 2^MIN(n, 26) first vectors of F_2^n */
 int test_syndrome_table(uint64_t* SM,TabulatedMat* Httab, uint64_t n) {
 
 #ifdef DEBUG
@@ -160,6 +164,9 @@ int create_syndrome_table(uint64_t* SM, TabulatedMat* Httab, uint64_t n, uint64_
     return 1;
 }
 
+/* Compute various stats of the code represented by G
+ * - GV-bound and real min distance
+ * - intra-bucket distance (average, using random vectors so with potential full-collisions) */
 void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_t k, uint64_t nbvec) {
 
     if (nbvec <= k) {
@@ -215,7 +222,8 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
 
     // For each bucket
     for (i = 0; i < (1ULL << k); i++) {
-
+        
+        // Compute the weight of all vG to get the minimal distance
         *v_alias = i;
         mzd_mul(cw, v, G, 0); // TODO : tabulate G also?
         w = popcnt64_unrolled(cw_alias, 1);
@@ -226,19 +234,15 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
         bucket* b = buckets[i];
         double tot = 0.0;
         if (b && b->curlen > 1) {
-            //printf("bucket %lu, len %lu\n", i, b->curlen);
             for (int j = 0; j < b->curlen; j++) {
                 for (int k = j+1; k < b->curlen; k++) {
                     uint64_t r = b->tab[j] ^ b->tab[k];
 
-                    //printf("r:%08lX, j:%08lX, k: %08lX\n", r, b->tab[j], b->tab[k]);
                     uint64_t w = (double)popcnt64_unrolled(&r, 1);
-                    //printf("%lx+%lx -> w=%lx\n", b->tab[j], b->tab[k], w);
                     weights[w] += 1;
                 }
             }
 
-            //tot /= ((double)b->curlen * (b->curlen - 1))/2;
         } else {
             nb_empty_bucket++;
         }
@@ -300,7 +304,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     free(weights);
 }
 
-
+/* Same as make_stats, but use the code `nbconcat` times in direct sum*/
 void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64_t kp, uint64_t nbvec, uint64_t nbconcat) {
     
     uint64_t k = nbconcat * kp;
@@ -372,7 +376,7 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
                     //printf("r:%08lX, j:%08lX, k: %08lX\n", r, b->tab[j], b->tab[k]);
                     uint64_t w = (double)popcnt64_unrolled(&r, 1);
                     tot += w;
-                    //printf("w=%lu,k+1=%u\n", w, k+1);
+                    printf("w=%lu,k+1=%u\n", w, k+1);
                     weights[w] += 1;
                 }
             }
@@ -443,38 +447,78 @@ void get_perfect_golay(mzd_t** G, mzd_t** H, uint64_t* n, uint64_t* k) {
     *H = mzd_from_str( *n-*k,*n,"1000000000011111001001001000000000011111001001001000000001100011101100001000000001100011101100001000000110010001111000001000001001110101010000001000010110111100000000001000010110111100000000001000010110111100000000001000010110111100000000001111100100101");
 }
 
+
+int load_code(char** argv, int argc, mzd_t** G , mzd_t** H, uint64_t* n, uint64_t* k, uint64_t* nbvec) {
+
+    if (argc != 3) {
+        printf("Usage : %s load nbvec\n", argv[0]);
+        return 0;
+    } 
+
+    *nbvec = atoll(argv[2]);
+    get_hamming_3(G, H, n, k);
+    return 1;
+}
+
+int random_code(char** argv, int argc, mzd_t** G , mzd_t** H, uint64_t* n, uint64_t* k, uint64_t* nbvec) {
+
+    if (argc != 5) {
+
+        printf("Usage : %s rand n k nbvec\n", argv[0]);
+        return 0;
+    }
+
+
+    *n = atoll(argv[2]);
+    *k = atoll(argv[3]);
+    *nbvec = atoll(argv[4]);
+
+    mzd_t* M = get_random_fullrank(*n-*k, *k);
+
+    mzd_t* Ink = mzd_init(*n-*k,*n-*k);
+    mzd_t* Ik = mzd_init(*k,*k);
+
+    // n-k identity matrix
+    for (int i = 0; i < *n-*k; i++) mzd_write_bit(Ink, i, i, 1);
+    for (int i = 0; i < *k; i++) mzd_write_bit(Ik, i, i, 1);
+
+    *H = mzd_concat(NULL,  M, Ink); // H = [M | I_{n-k}]
+    mzd_t* Mt = mzd_transpose(NULL, M);
+    *G = mzd_concat(NULL, Ik, Mt);
+
+    mzd_free(Ik);
+    mzd_free(Ink);
+    mzd_free(M);
+    mzd_free(Mt);
+
+    return 1;
+}
+
 int main(int argc, char** argv) {
     
+    // seeding not taken in account 
     //xoshiro256starstar_random_set((uint64_t[4]){1,3,3,8});
-   /* 
-    if (argc < 4) {
-        printf("Usage : %s n k nbvec\n" , argv[0]);
+    
+    mzd_t *G, *H;
+    uint64_t n, k, nbvec;
+
+    if (argc < 2) {
+        printf("Usage : %s {rand, load}\n" , argv[0]);
         return 1;
     }
-    uint64_t n = atoll(argv[1]);
-    uint64_t k = atoll(argv[2]);
-    uint64_t nbvec = atoll(argv[3]);
 
-    mzd_t* Ink = mzd_init(n-k,n-k);
-    mzd_t* Ik = mzd_init(k,k);
-    // n-k identity matrix
-    for (int i = 0; i < n-k; i++) mzd_write_bit(Ink, i, i, 1);
-    for (int i = 0; i < k; i++) mzd_write_bit(Ik, i, i, 1);
+    if (!strcmp(argv[1], "rand")) {
+        if (!random_code(argv, argc, &G, &H, &n, &k, &nbvec)) return -1;
+    } else if (!strcmp(argv[1], "load")) {
+        if (!load_code(argv, argc, &G, &H, &n, &k, &nbvec)) return -1;
+    } else {
+        printf("arg 1 as to be either 'rand' or 'load'.\n");
+        return 2;
+    }
     
-    mzd_t* M = get_random_fullrank(n-k, k);
-    mzd_t* H = mzd_concat(NULL,  M, Ink); // H = [M | I_{n-k}]
-    mzd_t* Ht = mzd_transpose(NULL, H); // H^t 
-    mzd_t* Mt = mzd_transpose(NULL, M);
-    mzd_t* G = mzd_concat(NULL, Ik, Mt);
-
-    */
-    mzd_t *G, *H;
-
-    uint64_t n, k, nbvec;
-    get_hamming_3(&G, &H, &n, &k);
-    mzd_print(H);
+    // From there, G, H, n, k, nbvec are initialised
+    
     mzd_t* Ht = mzd_transpose(NULL, H);
-    nbvec = 30;
 
     TabulatedMat Httab;
     Httab.t1 = malloc(sizeof(uint64_t) * (1ULL << n/2));
@@ -493,14 +537,13 @@ int main(int argc, char** argv) {
     
     printf("Syndrome table generated.\n");
     
-    //make_stats(SM, &Httab, G, n, k, nbvec);
-    make_stats_directsum(SM, &Httab, n, k, nbvec, 6);
+    make_stats(SM, &Httab, G, n, k, nbvec);
+    //make_stats_directsum(SM, &Httab, n, k, nbvec, 2);
 
 
     mzd_free(H);
     mzd_free(Ht);
     mzd_free(G);
-    //mzd_free(Mt);
     free(Httab.t1);
     free(Httab.t2);
     free(SM);

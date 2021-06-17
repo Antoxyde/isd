@@ -1,22 +1,21 @@
-DEBUG ?= 1
-AVX ?= 1
-ifeq ($(DEBUG), 1)
-	CFLAGS=-g -Wextra -Werror -Wall $(INCDIRS) --std=c99 -Wl,-rpath=. -Wno-unused-function -mbmi -DDEBUG -fsanitize=address
-else
-	ifeq ($(AVX), 1)
-		CFLAGS=-Ofast $(INCDIRS) --std=c99 -Wl,-rpath=. -mbmi -mavx512vl -mavx512f -mavx512dq
-	else
-	CFLAGS=-march=native -Ofast $(INCDIRS) --std=c99 -Wl,-rpath=. -mbmi
-	endif
-endif
-
+EXECUTABLES=nns_test main_prange main_stern
 CC=gcc
-CFLAGS=-Ofast -I=. -DPROGRESS
-#CFLAGS=-g -fsanitize=address -Wextra -Wall --std=c99 -mbmi -DDEBUG 
-LDFLAGS=-lm4ri
-EXECUTABLES=nns_test
+CFLAGS=--std=c99 -DPROGRESS -mbmi
 
-all: $(EXECUTABLES)
+all: 
+	echo -e "Either run : \nmake local : release mode, without avx\nmake debug: debug mode, without avx\nmake avx: release mode, with avx"
+
+avx: CFLAGS += -Wl,-rpath=. -mbmi -DDEBUG -Ofast -DPROGRESS -mavx512vl -mavx512f -mavx512dq
+avx: LDFLAGS += -llibm4ri-0.0.20200125.so
+avx: $(EXECUTABLES)
+
+run: CFLAGS += -Wl,-rpath=. -mbmi -Ofast -DPROGRESS 
+run: LDFLAGS += -lm4ri
+run: $(EXECUTABLES)
+
+debug: CFLAGS += -g -fsanitize=address -Wextra -Wall -Wno-unused-function -DDEBUG
+debug: LDFLAGS += -lm4ri  -lasan
+debug: $(EXECUTABLES)
 
 %.o : %.c %.h
 	$(CC) $(CFLAGS) -c $<
@@ -28,10 +27,10 @@ main_prange.o: main_prange.c prange.h utils.h libpopcnt.h xoshiro256starstar.h
 prange.o: prange.c prange.h utils.h libpopcnt.h xoshiro256starstar.h
 stern.o: stern.c utils.h libpopcnt.h xoshiro256starstar.h
 
-main_stern: utils.o main_stern.o  stern.o #libm4ri-0.0.20200125.so
+main_stern: utils.o main_stern.o  stern.o 
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
-main_prange: utils.o main_prange.o prange.o #libm4ri-0.0.20200125.so
+main_prange: main_prange.o prange.o  utils.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 nns_test: utils.o nns_test.o  buckets.o

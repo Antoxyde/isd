@@ -1,11 +1,12 @@
 #!/bin/bash
 
-nbvec=25
-k=18
-for n in 42 44 46 48; do
-	for run in $(seq 0 20); do
-	    fname="scripts/runs/nns_stats/run${run}_k${k}_n${n}"
-	    echo "$fname"
-	    ./nns_test "$n" "$k" "$nbvec" > "$fname"
-	done
+for k in $(seq 6 10); do
+    for n in $(seq $(($k + 10)) $((k + 16)) ); do 
+        nbvec=$(($k*2+4))
+        for run in $(seq 0 20); do
+            fname="scripts/runs/nns_stats/run${run}_k${k}_n${n}_double"
+            echo "$fname"
+            ./nns_test rand "$n" "$k" "$nbvec" > "$fname"
+        done
+    done
 done

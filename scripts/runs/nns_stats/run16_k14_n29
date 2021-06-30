@@ -1,0 +1,13 @@
+Syndrome table generated.
+Number of combinations             33558103
+n                                  29
+k                                  14
+Number of vector in F^2_n hashed   2^20
+Theoretical min weight (GV bound)  6
+Practical min weight               5 
+Average internal distance          7.228681
+Number of empty bucket             0
+Min elements / bucket              37
+Max elements / bucket              70
+G                                  1438C001 8EAC002 2B90004 21AC008 DCB4010 AFC8020 72E4040 1C7A8080 95A8100 1E6D0200 8A0C400 143B4800 6EB1000 F232000 
+Weight distrib                      1008 8751 72391 326581 1195866 2905025 5749984 7880746 8061849 5617420 1701200 37131 151 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 

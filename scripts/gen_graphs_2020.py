@@ -45,6 +45,27 @@ print("Moy low prange : {}".format( sum(run[1][-1] for run in pranges)/len(prang
 print("Moy low stern : {}".format( sum(run[1][-1] for run in stern)/len(stern)))
 print("Moy low stern multiwin : {}".format( sum(run[1][-1] for run in stern_3pass)/len(stern_3pass)))
 
+
+weights_3pass = [run[1][-1] for run in stern_3pass]
+weights_stern = [run[1][-1] for run in stern]
+
+count_stern = [0 for _ in range(1280)]
+count_3pass = [0 for _ in range(1280)]
+
+for  w in weights_3pass:
+    count_3pass[w] += 1
+
+for  w in weights_stern:
+    count_stern[w] += 1
+
+print("3pass")
+print( list((i,j) for i,j in enumerate(count_3pass) if j != 0)) 
+
+print("stern normal")
+print( list((i,j) for i,j in enumerate(count_stern) if j != 0))
+
+sys.exit()
+
 def plot_average_weight_per_hour():
 
     prange_averages, stern_averages, stern_3pass_averages = [],[],[]

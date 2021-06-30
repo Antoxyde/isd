@@ -37,20 +37,23 @@ def load_run(runfile):
     9 G                                  2748380001 339A280002 F5BB8C0004 7F60200008 B6C940010 2466440020 388C80040 23AF000080 3B98680100 5D1A8C0200 A6B4800400 657B080800 BCE95C1000 838542000 6FC0A04000 AE52F08000 CF6A690000 9F04B60000
     10 Weight distrib                      518 6416 74579 498966 2793868 10885378 36594202 90744016 196123338 317623440 439023658 450499928 355444122 199853965 46700133 614078 1493 0 0
     """
-    with open(runfile, "r") as fd:
-        try:
-            lines = fd.read().strip().split("\n")
-            n = int(re.findall("\d+", lines[0])[0])
-            k = int(re.findall("\d+", lines[1])[0])
-            nbvec = int(lines[2][-2:])
-            gv = int(re.findall("\d+", lines[3])[0])
-            minw = int(re.findall("\d+", lines[4])[0])
-            dinter_av = float(re.findall("\d+\.\d+", lines[5])[0])
-            weight_distrib = list(map(int, re.findall("\d+", lines[10])))
-        except ValueError as e:
-            return None
-        except IndexError as e:
-            return None
+
+    try:
+        with open(runfile, "r") as fd:
+                lines = fd.read().strip().split("\n")[2:]
+                n = int(re.findall("\d+", lines[0])[0])
+                k = int(re.findall("\d+", lines[1])[0])
+                nbvec = int(lines[2][-2:])
+                gv = int(re.findall("\d+", lines[3])[0])
+                minw = int(re.findall("\d+", lines[4])[0])
+                dinter_av = float(re.findall("\d+\.\d+", lines[5])[0])
+                weight_distrib = list(map(int, re.findall("\d+", lines[10])))
+    except ValueError as e:
+        return None
+    except IndexError as e:
+        return None
+    except FileNotFoundError:
+        return None
     return Entry(n,k,nbvec,gv,minw,dinter_av, weight_distrib)
 
 def minw_dinter():
@@ -126,10 +129,32 @@ def stats():
     print("av : ", sum(runs)/len(runs))
     print("min : ", min(runs))
     print("max : ", max(runs))
-          
-min_max()
-histo_weight()
-hist_golay()
-minw_dinter()
-comp_length()
-stats()
+
+def all_stats():
+    elems = []
+    for k in range(6, 21):
+        for n in range(k+10, k+17):
+            m = 0
+            for run in range(21):
+                data = load_run(f"runs/nns_stats/run{run}_k{k}_n{n}")
+                if data is not None:
+                    m += data.dinter_av
+                    
+            m /= 20
+            trunc = (n-k)/2 + k
+            nns = n - m
+            gap = nns - trunc
+            elems.append((gap, data, m))
+
+    for (gap, data, m) in sorted(elems, key=lambda x : x[0]):
+        print("[{},{}] : gap={} (dinter = {})".format(data.n, data.k, gap, m))
+
+
+
+#min_max()
+#histo_weight()
+#hist_golay()
+#minw_dinter()
+#comp_length()
+#stats()
+all_stats()

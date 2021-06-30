@@ -1,0 +1,11 @@
+Syndrome table generated.
+n                                  38
+k                                  12
+Number of vector in F^2_n hashed   2^16
+Theoretical min weight (GV bound)  10
+Average internal distance          13.563985
+Number of empty bucket             0
+Min elements / bucket              4
+Max elements / bucket              14
+
+Weight distrib                      0 0 1 10 62 284 1013 2952 7611 16164 30456 48554 66785 79722 81681 72124 54050 34013 17656 7506 2562 612 98 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 

@@ -7,6 +7,19 @@ Two differents algorithms are implemented :
 
 Both of them are implemented with AVX-512 support.
 
+# Usage
+
+## Compilation
+
+3 targets : debug, run, avx.
+
+* debug : no avx512, debug stuff on, optimizations off
+* run: no avx512, optimisations on
+* avx: avx512 on, optimizations on
+
+Use `make <target>` to compile the target you want.
+
+## 
 # Credits
 
 * [m4ri](https://bitbucket.org/malb/m4ri/src/master/)

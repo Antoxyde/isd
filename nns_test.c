@@ -216,7 +216,9 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
     uint64_t dmin = n - k + 1; 
     uint64_t nb_empty_bucket = 0;
     double dinter = 0.0;
-    
+    uint64_t tot = 0; 
+    uint64_t nb_comb = 0;
+
     min_blen = max_blen = buckets[0]->curlen;
     av_blen = 0;
 
@@ -232,11 +234,11 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
         }
 
         bucket* b = buckets[i];
-        double tot = 0.0;
+        
         if (b && b->curlen > 1) {
             for (int j = 0; j < b->curlen; j++) {
-                for (int k = j+1; k < b->curlen; k++) {
-                    uint64_t r = b->tab[j] ^ b->tab[k];
+                for (int l = j+1; l < b->curlen; l++) {
+                    uint64_t r = b->tab[j] ^ b->tab[l];
 
                     uint64_t w = (double)popcnt64_unrolled(&r, 1);
                     weights[w] += 1;
@@ -253,7 +255,7 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
             max_blen = MAX(min_blen, b->curlen);
         }
 
-        dinter += tot;
+        //dinter += tot;
 #ifdef PROGRESS 
         if (perc && i % perc == 0) {
             printf("\r%lu%%", i / perc);
@@ -268,14 +270,16 @@ void make_stats(uint64_t* SM, TabulatedMat* Httab, mzd_t* G, uint64_t n, uint64_
 #endif
     
     av_blen /= (double)(1 << k);
+
     dinter = 0.0;
-    uint64_t tot = 0;
-    for (i = 0; i < k; i++) {
+    tot = 0;
+    for (i = 0; i < n; i++) {
         tot += weights[i];
         dinter += (weights[i] * i);
     }
-
     dinter /= tot;
+
+
     printf("Number of combinations             %lu\n", tot);
     printf("n                                  %lu\n", n);
     printf("k                                  %lu\n", k);
@@ -316,7 +320,7 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
     }
 
     bucket** buckets = bucket_init(1ULL << k, 1ULL << (nbvec - k),32);
-    uint64_t s, x, key, e, w, i, j;
+    uint64_t s, x, key, e, w, i, j, xp;
     uint64_t min_blen, max_blen;
     double av_blen;
     uint64_t *weights = calloc(sizeof(uint64_t) , n+1);
@@ -327,13 +331,20 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
 #endif
 
     for (i = 0; i < (1ULL << MIN(nbvec, n)); i++) {
+        // random n bits vector
         x = xoshiro256starstar_random() & ((1ULL << n) - 1);
         s = 0;
+        key = 0;
         for (j = 0; j < nbconcat; j++) {
-            s = TABULATED_MATMUL((x >> (j*kp)) & ((1ULL << kp) - 1), Httab, np);
-            e |= SM[s] << k*kp;
+            // decode each nbconcat vectors of np bits in the smaller code
+            xp = (x >> (j*np)) & ((1ULL << np) - 1);
+            s = TABULATED_MATMUL(xp, Httab, np);
+            e = SM[s];
+            key |= ((xp ^ e) & ((1ULL << kp) - 1)) << j*kp;
         }
-        key = (x ^ e) & ((1ULL << k) - 1);
+
+
+        // hash is concatenation of decoded vectors
         bucket_put(buckets, key, x);
 
 #ifdef PROGRESS
@@ -358,6 +369,7 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
     uint64_t* cw_alias = mzd_row(cw, 0);
     uint64_t nb_empty_bucket = 0;
     double dinter = 0.0;
+    uint64_t tot = 0;
     
     min_blen = max_blen = buckets[0]->curlen;
     av_blen = 0;
@@ -366,22 +378,15 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
     for (i = 0; i < (1ULL << k); i++) {
 
         bucket* b = buckets[i];
-        double tot = 0.0;
         if (b && b->curlen > 1) {
-            //printf("bucket %lu, len %lu\n", i, b->curlen);
             for (int j = 0; j < b->curlen; j++) {
-                for (int k = j+1; k < b->curlen; k++) {
-                    uint64_t r = b->tab[j] ^ b->tab[k];
-
-                    //printf("r:%08lX, j:%08lX, k: %08lX\n", r, b->tab[j], b->tab[k]);
+                for (int l = j+1; l < b->curlen; l++) {
+                    uint64_t r = b->tab[j] ^ b->tab[l];
                     uint64_t w = (double)popcnt64_unrolled(&r, 1);
-                    tot += w;
-                    printf("w=%lu,k+1=%u\n", w, k+1);
                     weights[w] += 1;
                 }
             }
 
-            tot /= ((double)b->curlen * (b->curlen - 1))/2;
         } else {
             nb_empty_bucket++;
         }
@@ -392,7 +397,6 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
             max_blen = MAX(min_blen, b->curlen);
         }
 
-        dinter += tot;
 #ifdef PROGRESS 
         if (perc && i % perc == 0) {
             printf("\r%lu%%", i / perc);
@@ -408,7 +412,14 @@ void make_stats_directsum(uint64_t* SM, TabulatedMat* Httab, uint64_t np, uint64
 #endif
     
     av_blen /= (double)(1 << k);
-    dinter /= (double)((1 << k) - nb_empty_bucket);
+
+    dinter = 0.0;
+    tot = 0;
+    for (i = 0; i < n; i++) {
+        tot += weights[i];
+        dinter += (weights[i] * i);
+    }
+    dinter /= tot;
     
     printf("n                                  %lu\n", n);
     printf("k                                  %lu\n", k);
@@ -537,8 +548,7 @@ int main(int argc, char** argv) {
     
     printf("Syndrome table generated.\n");
     
-    make_stats(SM, &Httab, G, n, k, nbvec);
-    //make_stats_directsum(SM, &Httab, n, k, nbvec, 2);
+    make_stats_directsum(SM, &Httab, n, k, nbvec, 2);
 
 
     mzd_free(H);

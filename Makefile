@@ -1,6 +1,6 @@
-EXECUTABLES=nns_test main_prange main_stern
+EXECUTABLES=main_semibc main_stern
 CC=gcc
-CFLAGS=--std=c99 -DPROGRESS -mbmi
+CFLAGS=--std=c99 -mbmi
 
 all: 
 	echo -e "Either run : \nmake local : release mode, without avx\nmake debug: debug mode, without avx\nmake avx: release mode, with avx"
@@ -9,16 +9,13 @@ avx: CFLAGS += -Wl,-rpath=. -mbmi -DDEBUG -Ofast -DPROGRESS -mavx512vl -mavx512f
 avx: LDFLAGS += -llibm4ri-0.0.20200125.so
 avx: $(EXECUTABLES)
 
-run: CFLAGS += -Wl,-rpath=. -mbmi -Ofast -DPROGRESS 
-run: LDFLAGS += -lm4ri
-run: $(EXECUTABLES)
+local: CFLAGS += -Wl,-rpath=. -mbmi -Ofast 
+local: LDFLAGS += -lm4ri
+local: $(EXECUTABLES)
 
-debug: CFLAGS += -g -fsanitize=address -Wextra -Wall -Wno-unused-function -DDEBUG
-debug: LDFLAGS += -lm4ri  -lasan
+debug: CFLAGS += -g -Wextra -Wall -Wno-unused-function -DDEBUG -fsanitize=address
+debug: LDFLAGS += -lasan -lm4ri
 debug: $(EXECUTABLES)
-
-%.o : %.c %.h
-	$(CC) $(CFLAGS) -c $<
 
 nns_test.o: nns_test.c utils.h libpopcnt.h 
 main_stern.o: main_stern.c stern.h utils.h libpopcnt.h xoshiro256starstar.h
@@ -26,9 +23,16 @@ main_prange.o: main_prange.c prange.h utils.h libpopcnt.h xoshiro256starstar.h
 
 prange.o: prange.c prange.h utils.h libpopcnt.h xoshiro256starstar.h
 stern.o: stern.c utils.h libpopcnt.h xoshiro256starstar.h
+semi_bc.o: semi_bc.c utils.h libpopcnt.h xoshiro256starstar.h
+
+%.o : %.c %.h
+	$(CC) $(CFLAGS) -c $<
 
 main_stern: utils.o main_stern.o  stern.o 
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+   
+main_semibc: utils.o main_semibc.o  semi_bc.o 
+	$(CC) -o $@ $^ $(FLAGS) $(LDFLAGS)
 
 main_prange: main_prange.o prange.o  utils.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)

@@ -5,8 +5,8 @@ CFLAGS=--std=c99 -mbmi
 all: 
 	echo -e "Either run : \nmake local : release mode, without avx\nmake debug: debug mode, without avx\nmake avx: release mode, with avx"
 
-avx: CFLAGS += -Wl,-rpath=. -mbmi -DDEBUG -Ofast -DPROGRESS -mavx512vl -mavx512f -mavx512dq
-avx: LDFLAGS += -llibm4ri-0.0.20200125.so
+avx: CFLAGS +=  -mbmi -Ofast -DPROGRESS -mavx512vl -mavx512f -mavx512dq -Im4ri
+avx: LDFLAGS += '-Wl,-rpath,$$ORIGIN' -L. -l:libm4ri-0.0.20200125.so
 avx: $(EXECUTABLES)
 
 local: CFLAGS += -Wl,-rpath=. -mbmi -Ofast 
@@ -28,13 +28,13 @@ semi_bc.o: semi_bc.c utils.h libpopcnt.h xoshiro256starstar.h
 %.o : %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
-main_stern: utils.o main_stern.o  stern.o 
+main_stern: utils.o main_stern.o  stern.o  
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
    
 main_semibc: utils.o main_semibc.o  semi_bc.o 
 	$(CC) -o $@ $^ $(FLAGS) $(LDFLAGS)
 
-main_prange: main_prange.o prange.o  utils.o
+main_prange: main_prange.o prange.o  utils.o 
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 nns_test: utils.o nns_test.o  buckets.o

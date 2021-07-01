@@ -5,7 +5,7 @@
 #define AVX512_ENABLED
 #endif
 
-#include <m4ri/m4ri.h>
+#include "m4ri/m4ri.h"
 #include <stdint.h>
 
 // Represent a linear combination

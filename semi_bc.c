@@ -5,12 +5,9 @@
 #include <time.h>
 #include <immintrin.h>
 
-#define STERN_GET(tab, index) ((tab[index >> 6]) >> (index & 0x3f)) & 1
-#define STERN_SET_ONE(tab, index) (tab[index >> 6]) |= (1ULL << (index & 0x3f))
-
 #define N 1280
 #define K 640
-#define RADIX_WIDTH 9
+#define RADIX_WIDTH 10
 #define RADIX_NLEN 2
 #define M 1 // Number of window to check per iteration
 
@@ -21,7 +18,7 @@ mzd_t* semi_bc(mzd_t* G, uint64_t time_sec, uint64_t l, uint64_t c) {
     double elapsed = 0.0;
 
     // p is the Stern p parameter. (= number of LC to make for each rows subsets)
-    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0, total = 0, done = 0, nb_total_cw = 0, offset = 0, lc_index = 0;
+    uint64_t p = 2, iter = 0, mwin = 0, delta = 0, citer = 0, total = 0, done = 0, nb_total_cw = 0, offset = 0, lc_index = 0, idx = 0, delta_alt = 0;
 
     rci_t comb1[p], comb2[p], min_comb[2*p],lambda = 0, mu = 0, tmp = 0, i = 0, j = 0;
     int min_wt = K - 1, wt = 0;
@@ -190,13 +187,13 @@ mzd_t* semi_bc(mzd_t* G, uint64_t time_sec, uint64_t l, uint64_t c) {
         memset(lc_indexes, 0, M * sizeof(uint64_t));
 
         // Creates all L1
-
         for (mwin = 0; mwin < M; mwin++) {
             for (comb1[0] = 0; comb1[0]  < 320 /* K/2 */; comb1[0]++) {
                 uint64_t* row1 = (uint64_t*)Glw->rows[comb1[0]];
 
                 for (comb1[1] = comb1[0] + 1; comb1[1] < 320 /* K/2 */; comb1[1]++) {
                     uint64_t* row2 = (uint64_t*)Glw->rows[comb1[1]];
+
                     // Compute the first l bits of the LC of rows 1 & 2 on the windows mwin
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
                     lc_tab[mwin][lc_indexes[mwin]].index1 = comb1[0];
@@ -232,74 +229,84 @@ mzd_t* semi_bc(mzd_t* G, uint64_t time_sec, uint64_t l, uint64_t c) {
                 for (mwin = 0; mwin < M; mwin++) {
                     // Compute the first l bits of the LC of rows 1 & 2
                     delta = (row1[mwin] ^ row2[mwin]) & sigmask;
+
+                    for (idx = 0; idx < l + 1; idx++) {
+                        delta_alt = delta;
+
+                        // for idx in 0..l-1 we flip corresponding bit
+                        // and for idx == l, we keep delta_alt = delta (exact match as in classical stern's algorithm)
+                        if (idx < l) {
+                            delta_alt ^= (1ULL << idx); // Flip bit number l
+                        }
                     
-                    // Classical Stern; match all elements that have the same value
-                    offset = lc_offsets[mwin][delta];
+                        offset = lc_offsets[mwin][delta_alt];
 
-                    // Check that we have at least 1 result before building the combination of row1 + row2
-                    if (lc_tab_alias_sorted[mwin][offset].delta == delta) {
-#if defined(AVX512_ENABLED)
-
-                        __m512i linear_comb_high = _mm512_loadu_si512(row1);
-                        __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
-
-                        linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
-                        linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
-#else
-                        // Zero-out linear_comb and load row1 XOR row2 into it
-                        mxor(linear_comb,(uint64_t*)linear_comb, 10);
-                        mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
-                        mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
-#endif
-                    
-                        for (; offset < nelem && lc_tab_alias_sorted[mwin][offset].delta == delta; offset++) {
-                            comb1[0] = lc_tab_alias_sorted[mwin][offset].index1;
-                            comb1[1] = lc_tab_alias_sorted[mwin][offset].index2;
+                        // Check that we have at least 1 result before building the combination of row1 + row2
+                        if (lc_tab_alias_sorted[mwin][offset].delta == delta_alt) {
 
 #if defined(AVX512_ENABLED)
-                            void* row3 = Glw->rows[comb1[0]];
-                            void* row4 = Glw->rows[comb1[1]];
+                            __m512i linear_comb_high = _mm512_loadu_si512(row1);
+                            __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
 
-                            // Load the two new rows and add them to the LC of the two previous ones.
-                            __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
-                            __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
-
-                            linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row4));
-                            linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64));
-
-                            // Save the result of the LC of the 4 rows
-                            _mm512_storeu_si512(linear_comb_next, linear_comb_high_next);
-                            _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low_next);
+                            linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
+                            linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
 #else
-                            memcpy(linear_comb_next, linear_comb, 80);
-                            mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[0]], 10);
-                            mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[1]], 10);
+                            memset(linear_comb, 0, 80); 
+                            // Zero-out linear_comb and load row1 XOR row2 into it
+                            mxor(linear_comb,(uint64_t*)linear_comb, 10);
+                            mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
+                            mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
+#endif
+                        
+                            for (; offset < nelem && lc_tab_alias_sorted[mwin][offset].delta == delta_alt; offset++) {
+                                comb1[0] = lc_tab_alias_sorted[mwin][offset].index1;
+                                comb1[1] = lc_tab_alias_sorted[mwin][offset].index2;
+
+#if defined(AVX512_ENABLED)
+                                void* row3 = Glw->rows[comb1[0]];
+                                void* row4 = Glw->rows[comb1[1]];
+
+                                // Load the two new rows and add them to the LC of the two previous ones.
+                                __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
+                                __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
+
+                                linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row4));
+                                linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64));
+
+                                // Save the result of the LC of the 4 rows
+                                _mm512_storeu_si512(linear_comb_next, linear_comb_high_next);
+                                _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low_next);
+#else
+                                memcpy(linear_comb_next, linear_comb, 80);
+                                mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[0]], 10);
+                                mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[1]], 10);
 #endif
 
-                            wt = popcnt64_unrolled(linear_comb_next , 10 /* K/64 */);
-                            nb_total_cw++;
+                                wt = popcnt64_unrolled(linear_comb_next , 10 /* K/64 */);
+                                nb_total_cw++;
 
-                            if (wt < min_wt) {
+                                if (wt < min_wt) {
 
-                                // Save the new min weight and the indexes of th e linear combination to obtain it
-                                current = clock();
-                                elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
-                                printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt + 2*p);
+                                    // Save the new min weight and the indexes of th e linear combination to obtain it
+                                    current = clock();
+                                    elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
+                                    printf("niter=%lu, time=%.3f, wt=%ld\n", iter, elapsed, wt + 2*p);
 
-                                min_wt = wt;
+                                    min_wt = wt;
 
-                                // Save the indexes of the LC
-                                memcpy(min_comb, comb1, 2 * sizeof(rci_t));
-                                memcpy(min_comb + 2, comb2, 2 * sizeof(rci_t));
+                                    // Save the indexes of the LC
+                                    memcpy(min_comb, comb1, 2 * sizeof(rci_t));
+                                    memcpy(min_comb + 2, comb2, 2 * sizeof(rci_t));
 
-                                memcpy(min_cw, linear_comb_next, 80 /* K/8 */);
-                                memcpy(column_perms_copy, column_perms, N * sizeof(rci_t));
+                                    memcpy(min_cw, linear_comb_next, 80 /* K/8 */);
+                                    memcpy(column_perms_copy, column_perms, N * sizeof(rci_t));
 
-                                mzd_t* cw = stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
-                                print_cw(cw);
-                                mzd_free(cw);
+                                    mzd_t* cw = stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, p);
+                                    print_cw(cw);
+                                    mzd_free(cw);
 
-                                fflush(stdout);
+                                    fflush(stdout);
+                                }
                             }
                         }
                     }

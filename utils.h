@@ -1,7 +1,7 @@
 #ifndef ISD_UTILS_H
 #define ISD_UTILS_H
 
-#include <m4ri/m4ri.h>
+#include "m4ri/m4ri.h"
 
 #define CHECK_MALLOC(X) do { \
         if ((X) == NULL) {\

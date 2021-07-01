@@ -18,8 +18,8 @@ int main(void) {
     uint64_t radix_nlen = 2;
     uint64_t m = 1;
     uint64_t c = 32;
-    uint64_t discard_nwords = 7;
-    uint64_t discard_threshold = 200;
+    uint64_t discard_nwords = 10;
+    uint64_t discard_threshold = 1280;
 
     printf("# Running with the following configuration :\n");
 

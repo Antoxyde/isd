@@ -11,7 +11,7 @@
 
 int main(void) {
 
-    uint64_t time_sec = 10;
+    uint64_t time_sec = 2;
     char *challenge_file = "challenges/LW_1280_1";
     uint64_t l = 20;
     uint64_t c = 32;

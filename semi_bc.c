@@ -246,26 +246,27 @@ mzd_t* semi_bc(mzd_t* G, uint64_t time_sec, uint64_t l, uint64_t c) {
 
 #if defined(AVX512_ENABLED)
                             __m512i linear_comb_high = _mm512_loadu_si512(row1);
-                            __m128i linear_comb_low = _mm_loadu_si128(row1 + 64);
+                            __m128i linear_comb_low = _mm_loadu_si128((void*)row1 + 64);
 
                             linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row2));
-                            linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row2 + 64));
+                            linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128((void*)row2 + 64));
 #else
                             memset(linear_comb, 0, 80); 
                             // Zero-out linear_comb and load row1 XOR row2 into it
                             mxor(linear_comb,(uint64_t*)linear_comb, 10);
-                            mxor(linear_comb, (uint64_t*)Glw->rows[comb2[0]], 10);
-                            mxor(linear_comb, (uint64_t*)Glw->rows[comb2[1]], 10);
+                            mxor(linear_comb, (uint64_t*)row1, 10);
+                            mxor(linear_comb, (uint64_t*)row2, 10);
 #endif
                         
                             for (; offset < nelem && lc_tab_alias_sorted[mwin][offset].delta == delta_alt; offset++) {
+
                                 comb1[0] = lc_tab_alias_sorted[mwin][offset].index1;
                                 comb1[1] = lc_tab_alias_sorted[mwin][offset].index2;
 
-#if defined(AVX512_ENABLED)
                                 void* row3 = Glw->rows[comb1[0]];
                                 void* row4 = Glw->rows[comb1[1]];
 
+#if defined(AVX512_ENABLED)
                                 // Load the two new rows and add them to the LC of the two previous ones.
                                 __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
                                 __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row3 + 64));
@@ -278,8 +279,8 @@ mzd_t* semi_bc(mzd_t* G, uint64_t time_sec, uint64_t l, uint64_t c) {
                                 _mm_storeu_si128((__m128i*)(linear_comb_next + 8), linear_comb_low_next);
 #else
                                 memcpy(linear_comb_next, linear_comb, 80);
-                                mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[0]], 10);
-                                mxor(linear_comb_next, (uint64_t*)Glw->rows[comb1[1]], 10);
+                                mxor(linear_comb_next, (uint64_t*)row3, 10);
+                                mxor(linear_comb_next, (uint64_t*)row4, 10);
 #endif
 
                                 wt = popcnt64_unrolled(linear_comb_next , 10 /* K/64 */);

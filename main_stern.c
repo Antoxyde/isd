@@ -10,7 +10,7 @@
 
 int main(void) {
 
-    uint64_t time_sec = 10;
+    uint64_t time_sec = 60;
     char *challenge_file = "challenges/LW_1280_1";
 
     printf("# Running with the following configuration :\n");

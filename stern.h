@@ -8,7 +8,7 @@
 #include "m4ri/m4ri.h"
 #include <stdint.h>
 
-#define M       1         // Number of window
+#define M       5         // Number of window
 #define P1      2         // Stern's P parameter
 #define P2      2         // Stern's P parameter
 #define N       1280      // Code length
@@ -34,9 +34,9 @@ typedef struct lc_ {
     uint16_t indexes[];
 } lc;
 
-#define LC_TAB_GET(tab, i) ((lc*)((tab)->lcs + i * (sizeof(lc) + sizeof(uint16_t) * (tab)->p)))
-#define LC_CALLOC(nelem, p) (lc*)(calloc(sizeof(lc) + sizeof(uint16_t) * p , nelem))
-#define LC_MALLOC(nelem, p) (lc*)(malloc((sizeof(lc) + sizeof(uint16_t) * p) * nelem))
+#define LC_TAB_GET(tab, i) ((lc*)((tab)->lcs + (i) * (sizeof(uint32_t) + sizeof(uint16_t) * (tab)->p)))
+#define LC_CALLOC(nelem, p) (lc*)(calloc(sizeof(uint32_t) + sizeof(uint16_t) * (p) , nelem))
+#define LC_MALLOC(nelem, p) (lc*)(malloc((sizeof(uint32_t) + sizeof(uint16_t) * (p)) * nelem))
 
 /* Input:
  *  - G, a n/2 x n generator matrix

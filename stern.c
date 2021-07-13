@@ -72,11 +72,22 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
     for (idx_win = 0; idx_win < M; idx_win++) {
         collisions_first_pass[idx_win] = (uint64_t*)malloc(nb_keys_bits);
         collisions_second_pass[idx_win] = (uint64_t*)malloc(nb_keys_bits);
+
         L2s[idx_win] = malloc(sizeof(lc_tab));
         L3s[idx_win] = malloc(sizeof(lc_tab));
-        
+        L2s_sorted[idx_win] = malloc(sizeof(lc_tab));
+        L3s_sorted[idx_win] = malloc(sizeof(lc_tab));
 
+        CHECK_MALLOC(L2s[idx_win]);
+        CHECK_MALLOC(L3s[idx_win]);
+        CHECK_MALLOC(L2s_sorted[idx_win]);
+        CHECK_MALLOC(L3s_sorted[idx_win]);
         
+        L2s[idx_win]->p  = P2;
+        L3s[idx_win]->p = P1;
+        L2s_sorted[idx_win]->p  = P2;
+        L3s_sorted[idx_win]->p = P1;
+
         L2s[idx_win]->lcs = LC_MALLOC(nelem, P2); 
         L3s[idx_win]->lcs = LC_MALLOC(nelem, P1);
         L2s_sorted[idx_win]->lcs = LC_MALLOC(nelem, P2); 
@@ -219,6 +230,19 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
             L2s_alias_sorted[idx_win] = radixsort(L2s[idx_win], L2s_sorted[idx_win], L2s_size[idx_win], aux);
             L3s_alias_sorted[idx_win] = radixsort(L3s[idx_win], L3s_sorted[idx_win], L3s_size[idx_win], aux);
         }
+        
+        /*
+        printf("Sorted : \n");
+        for (int mwin = 0; mwin < M; mwin++) {
+            for (i = 0; i < 15; i++) {
+                lc* e = LC_TAB_GET(L2s_alias_sorted[mwin], i);
+                lc* e2 = LC_TAB_GET(L2s_alias_sorted[mwin], i+1);
+                printf("%d : %d [%d,%d]\n", i, e->delta, e->indexes[0], e->indexes[1]);
+                printf("%d +1: %d [%d,%d]\n", i, e2->delta, e2->indexes[0], e2->indexes[1]);
+            }
+        }
+        */
+
 
         // Now that everything is sorted,  we can actually match all the pairs to get the collisions.
         for (idx_win = 0; idx_win < M; idx_win++) {
@@ -226,7 +250,7 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
             int index_second = 0, index_third = 0, save_index_third = 0;
 
             for (index_second = 0; index_second < L2s_size[idx_win]; index_second++) {
-
+                
                 if (index_second > 0 && LC_TAB_GET(L2s_alias_sorted[idx_win],index_second - 1)->delta != LC_TAB_GET(L2s_alias_sorted[idx_win],index_second)->delta) {
                     save_index_third = index_third;
 
@@ -329,7 +353,7 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 #endif
     printf("# Total number of iterations done : %lu\n", iter);
     printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);
-    printf("# word analysed, total words, ratio : %lu, %lu, %.3f\n", done, total, (double)done/(double)total);
+    printf("# Number of words analysed : %lu\n", total);
 
     mzd_t* result =  stern_reconstruct_cw(min_comb, column_perms_copy, min_cw, P1 + P2);
 

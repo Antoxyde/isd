@@ -8,18 +8,10 @@
 #include <time.h>
 #include <math.h>
 
-
 int main(void) {
 
     uint64_t time_sec = 10;
     char *challenge_file = "challenges/LW_1280_1";
-    uint64_t sigma = 18;
-    uint64_t radix_width = 9;
-    uint64_t radix_nlen = 2;
-    uint64_t m = 1;
-    uint64_t c = 32;
-    uint64_t discard_nwords = 10;
-    uint64_t discard_threshold = 1280;
 
     printf("# Running with the following configuration :\n");
 
@@ -36,26 +28,20 @@ int main(void) {
 #endif
 
     printf("# Algorithm: Stern\n");
-    printf("# Sigma: %lu\n", sigma);
-    printf("# Radix width: %lu\n", radix_width);
-    printf("# Radix nlen: %lu\n", radix_nlen);
+    printf("# L: %d\n", L);
+    printf("# Radix width: %d\n", RADIX_WIDTH);
+    printf("# Radix nlen: %d\n", RADIX_LEN);
     printf("# Challenge file: %s\n", challenge_file);
     printf("# Time (s): %lu\n", time_sec);
-    printf("# Discard nwords : %lu\n", discard_nwords);
-    printf("# Discard threshold : %lu\n", discard_threshold);
 
-    //uint64_t seed[4] = {1,2,3,4};
-    //xoshiro256starstar_random_set(seed);
-
-    uint32_t n = 1280; // Size of the instance
-    mzd_t* G = mzd_init(n/2, n);
-    mzd_t* H = mzd_init(n/2, n);
+    mzd_t* G = mzd_init(K, N);
+    mzd_t* H = mzd_init(K, N);
 
     if (!load_challenge(challenge_file, G, H)) {
         return 1;
     }
 
-    mzd_t* min_cw = isd_stern_canteaut_chabaud_p2_sort(G, time_sec, sigma, radix_width, radix_nlen, m, c, discard_threshold, discard_nwords);
+    mzd_t* min_cw = stern(G, time_sec);
 
     if (!min_cw) {
         printf("failed, leaving.\n");

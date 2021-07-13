@@ -18,14 +18,14 @@ void fisher_yates_shuffle(rci_t* values, size_t size);
 // return 1 if everything went fine, 0 otherwise
 int load_challenge(char* filename, mzd_t* G, mzd_t* H);
 
-// Check whether the left squared part of M
+// Check whether the left squared part of A
 // is the identity matrix or not
-// ie if M is in systematic form
-int left_is_identity(const mzd_t* M);
+// ie if A is in systematic form
+int left_is_identity(const mzd_t* A);
 
 void print_cw(mzd_t* cw);
 
-void rref_to_systematic(mzd_t* M, rci_t* perms);
+void rref_to_systematic(mzd_t* A, rci_t* perms);
 
 
 // Compute dst[i] ^= src[i] for i in 0..size
@@ -42,11 +42,13 @@ mzd_t* prange_reconstruct_cw(rci_t row_min_cw, rci_t* column_perms, mzd_t* min_c
 uint64_t binomial(uint64_t n, uint64_t k);
 
 // Only for up to 64x64
-void matrix_randomize(mzd_t* M, int r, int c);
+void matrix_randomize(mzd_t* A, int r, int c);
 
 // Only for up to 64x64
 mzd_t* get_random_fullrank(int r, int c);
 uint64_t gv_bound(uint64_t n, uint64_t k);
+
+void canteaut_chabaud(mzd_t* Glw, rci_t* column_perms);
 
 #endif
 

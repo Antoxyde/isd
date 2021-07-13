@@ -8,30 +8,45 @@
 #include "m4ri/m4ri.h"
 #include <stdint.h>
 
+#define M       1         // Number of window
+#define P1      2         // Stern's P parameter
+#define P2      2         // Stern's P parameter
+#define N       1280      // Code length
+#define K       640       // Code dimension
+#define L       20        // Stern's L paramter, window size 
+#define CC      320       // Number of canteaut-chabaud iterations
+
+#define RADIX_WIDTH 2
+#define RADIX_LEN L/2
+
+#define STERN_GET(tab, index) ((tab[index >> 6]) >> (index & 0x3f)) & 1
+#define STERN_SET_ONE(tab, index) (tab[index >> 6]) |= (1ULL << (index & 0x3f))
+
+// Represent an LC array
+typedef struct lc_tab_ {
+    uint8_t p;
+    void* lcs;
+} lc_tab;
+
 // Represent a linear combination
 typedef struct lc_ {
-    uint16_t index1,index2;
     uint32_t delta;
+    uint16_t indexes[];
 } lc;
 
+#define LC_TAB_GET(tab, i) ((lc*)((tab)->lcs + i * (sizeof(lc) + sizeof(uint16_t) * (tab)->p)))
+#define LC_CALLOC(nelem, p) (lc*)(calloc(sizeof(lc) + sizeof(uint16_t) * p , nelem))
+#define LC_MALLOC(nelem, p) (lc*)(malloc((sizeof(lc) + sizeof(uint16_t) * p) * nelem))
 
 /* Input:
  *  - G, a n/2 x n generator matrix
- * - niter, the number of iteration to make
- * - sigma and p, the Stern parameters
- * - radix_width: the window size denomsort will use at each iteration
- * - radix_nlen: sigma/radix_width, number of iteration that radixsort will make.
- * - m, integer in {1,..,k/64}, the number of windows to force to zeroes
- * - c, intger >= 1, number of Gaussian elimination iterations to make to derive a new systematic generator matrix
- * - discard_nrows & discard_threshold : the function will first perform a popcnt on the first `discard_nwords` of a line, and if the hamming weight of that line is under `discard_threshold`, it will discard it
- *
+ *  - 
  * Output:
  * - min_cw, the lowest codeword found
  */
- mzd_t* isd_stern_canteaut_chabaud_p2_sort(mzd_t* G, uint64_t niter, uint64_t sigma, uint64_t radix_width, uint64_t radix_nlen, uint64_t m, uint64_t c, uint64_t discard_threshold, uint64_t discard_nwords);
-
+ mzd_t* stern(mzd_t* G, uint64_t niter);
 int compare_lc(const void* a, const void* b);
-lc* denomsort_r(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* aux);
-lc* radixsort(lc* T, lc* Ts, int64_t Tlen, uint64_t width, uint64_t nlen, uint32_t *aux);
+lc_tab* denomsort_r(lc_tab* T, lc_tab* Ts, int64_t Tlen, uint64_t width, uint64_t pos, uint32_t* aux);
+lc_tab* radixsort(lc_tab* T, lc_tab* Ts, int64_t Tlen, uint32_t *aux);
 
 #endif

@@ -8,16 +8,16 @@
 #include "m4ri/m4ri.h"
 #include <stdint.h>
 
-#define M       5         // Number of window
+#define M       1         // Number of window
 #define P1      2         // Stern's P parameter
 #define P2      2         // Stern's P parameter
 #define N       1280      // Code length
 #define K       640       // Code dimension
-#define L       20        // Stern's L paramter, window size 
+#define L       18        // Stern's L paramter, window size 
 #define CC      320       // Number of canteaut-chabaud iterations
 
 #define RADIX_WIDTH 2
-#define RADIX_LEN L/2
+#define RADIX_LEN (L/2)
 
 #define STERN_GET(tab, index) ((tab[index >> 6]) >> (index & 0x3f)) & 1
 #define STERN_SET_ONE(tab, index) (tab[index >> 6]) |= (1ULL << (index & 0x3f))
@@ -25,6 +25,7 @@
 // Represent an LC array
 typedef struct lc_tab_ {
     uint8_t p;
+    size_t current_size;
     void* lcs;
 } lc_tab;
 

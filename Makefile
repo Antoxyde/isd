@@ -1,4 +1,4 @@
-EXECUTABLES=main_semibc main_stern
+EXECUTABLES=main_stern
 CC=gcc
 CFLAGS=--std=c99 -mbmi
 
@@ -28,7 +28,7 @@ semi_bc.o: semi_bc.c utils.h libpopcnt.h xoshiro256starstar.h
 %.o : %.c %.h
 	$(CC) $(CFLAGS) -c $<
 
-main_stern: utils.o main_stern.o  stern.o  
+main_stern: utils.o main_stern.o  stern.o combinations.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
    
 main_semibc: utils.o main_semibc.o  semi_bc.o 

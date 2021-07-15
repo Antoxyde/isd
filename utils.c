@@ -141,11 +141,12 @@ void printbin(uint64_t* a, size_t nbits) {
 }
 
 
-mzd_t* stern_reconstruct_cw(rci_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t psum) {
+mzd_t* stern_reconstruct_cw(uint16_t* min_comb, rci_t* column_perms, uint64_t* min_cw, uint64_t psum) {
 
     mzd_t* ident = mzd_init(1, 640 /* k */);
-    for (uint64_t i = 0; i < psum; i++)
+    for (uint64_t i = 0; i < psum; i++) {
         mzd_write_bit(ident, 0, min_comb[i], 1);
+    }
 
     mzd_t* min_cw_m = mzd_init(1, 640 /* k */);
     memcpy(mzd_first_row(min_cw_m), min_cw, 80);

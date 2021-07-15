@@ -12,7 +12,7 @@
 void print_combination(comb_t *comb_struct) {
     uint64_t i;
     for (i = 0; i < comb_struct->k; i++) {
-        printf("%lu ", comb_struct->combination[i]);
+        printf("%d ", comb_struct->combination[i]);
     }
     printf("\n");
 }

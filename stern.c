@@ -211,7 +211,6 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                 if (STERN_GET(collisions_second_pass[idx_win], delta)) {
                     lc* elem = LC_TAB_GET(L3s[idx_win], L3s[idx_win]->current_size);
                     memcpy(elem->indexes, comb_struct.combination, P1*sizeof(uint16_t));
-                    //printf("elem->indexes[0] : %lu\n", elem->indexes[0]);
                     elem->delta = delta;
                     L3s[idx_win]->current_size++;
                 }
@@ -264,8 +263,6 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                 }
 #endif
 
-                //printf("L2[%lu] = %lu, L3[%lu] = %lu\n", index_second, LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->delta, index_third, LC_TAB_GET(L3s_alias_sorted[idx_win], index_third)->delta);
-
                 for (index_third = save_index_third; index_third < L3s_alias_sorted[idx_win]->current_size && LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->delta == LC_TAB_GET(L3s_alias_sorted[idx_win], index_third)->delta; index_third++) {
 
 #if defined(DEBUG)
@@ -293,14 +290,9 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 #else
                     memcpy(linear_comb_next, linear_comb, 80 /* K/8 */ );
                     for (i = 0; i < P1; i++) {
-                        //printf("i: %lu, index_third=%lu\n", i, index_third);
-                        //printf("%lu\n", LC_TAB_GET(L3s_alias_sorted[idx_win],index_third)->indexes[i]);
                         mxor(linear_comb_next, (uint64_t*)Glw->rows[LC_TAB_GET(L3s_alias_sorted[idx_win],index_third)->indexes[i]], 10 /* K/64 */);
                     }
 #endif
-
-                    //printf("DBG idx_win = %lu, linear comb is : \n", idx_win);
-                    //printbin(linear_comb_next, 640);
 
                     wt = popcnt64_unrolled(linear_comb_next, 10 /* K/64 */);
                     total++;

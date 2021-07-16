@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 #define M       1         // Number of window
-#define P1      4         // Stern's P parameter
-#define P2      3         // Stern's P parameter
+#define P1      2         // Stern's P parameter
+#define P2      2         // Stern's P parameter
 #define N       1280      // Code length
 #define K       640       // Code dimension
 #define L       20        // Stern's L paramter, window size 

@@ -12,20 +12,17 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
     clock_t start = clock(), current;
     double elapsed = 0.0;
     uint64_t iter = 0, delta = 0, cc_iter = 0, total = 0,  idx_win = 0, i = 0, j = 0;
-
+    
+    // Combination structure for binomial combination generation
     comb_t comb_struct;
     comb_diff_t comb_diff;
-
+    
+    // Hold the combination of P1 + P2 rows indexes that gives the lowest codeword found
     uint16_t min_comb[P1+P2];
 
     int min_wt = K - 1, wt = 0;
 
     void* row = NULL;
-
-#if defined(AVX512_ENABLED)
-    uint64_t mask[10] /* K/64 */;
-    memset(mask, 0, 80 /* K/8 */);
-#endif /* AVX512_ENABLED */
 
 #if defined(DEBUG)
     uint64_t nb_collisions = 0, nb_collisions_delta = 0, collisions_list_size = 0;
@@ -301,7 +298,7 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                     __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row + 64 /* 512/(8 * sizeof(void)) */));
 
                     for (i = 1; i < P1; i++) {
-                        row = (void*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win], index_second)->indexes[i]];
+                        row = (void*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win], index_third)->indexes[i]];
                         linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row));
                         linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row + 64 /* 512/(8 * sizeof(void)) */));
                     }
@@ -325,8 +322,8 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                         current = clock();
                         elapsed = ((double)(current - start))/CLOCKS_PER_SEC;
                         printf("niter=%lu, time=%.3f, wt=%d\n", iter, elapsed, wt + P1 + P2);
-
                         min_wt = wt;
+
                         // Save the indexes of the LC 
                         memcpy(min_comb, LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->indexes, P2 * sizeof(uint16_t));
                         for (i = 0; i < P2; i++) {

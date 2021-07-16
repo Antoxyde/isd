@@ -5,7 +5,7 @@ CFLAGS=--std=c99 -mbmi
 all: 
 	echo -e "Either run : \nmake local : release mode, without avx\nmake debug: debug mode, without avx\nmake avx: release mode, with avx"
 
-avx: CFLAGS +=  -mbmi -Ofast -DPROGRESS -mavx512vl -mavx512f -mavx512dq -Im4ri
+avx: CFLAGS +=  -mbmi -Ofast -DFILTER -mavx512vl -mavx512f -mavx512dq -Im4ri
 avx: LDFLAGS += '-Wl,-rpath,$$ORIGIN' -L. -l:libm4ri-0.0.20200125.so
 avx: $(EXECUTABLES)
 

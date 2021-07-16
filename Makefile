@@ -9,7 +9,7 @@ avx: CFLAGS +=  -mbmi -Ofast -DPROGRESS -mavx512vl -mavx512f -mavx512dq -Im4ri
 avx: LDFLAGS += '-Wl,-rpath,$$ORIGIN' -L. -l:libm4ri-0.0.20200125.so
 avx: $(EXECUTABLES)
 
-local: CFLAGS += -mbmi -Ofast 
+local: CFLAGS += -mbmi -Ofast
 local: LDFLAGS += -lm4ri
 local: $(EXECUTABLES)
 

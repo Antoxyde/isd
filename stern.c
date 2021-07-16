@@ -13,6 +13,9 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
     double elapsed = 0.0;
     uint64_t iter = 0, delta = 0, cc_iter = 0, total = 0,  idx_win = 0, i = 0, j = 0;
 
+    comb_t comb_struct;
+    comb_diff_t comb_diff;
+
     uint16_t min_comb[P1+P2];
 
     int min_wt = K - 1, wt = 0;
@@ -20,11 +23,11 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 #if defined(AVX512_ENABLED)
     uint64_t mask[10] /* K/64 */;
     memset(mask, 0, 80 /* K/8 */);
-#endif
+#endif /* AVX512_ENABLED */
 
 #if defined(DEBUG)
     uint64_t nb_collisions = 0, nb_collisions_delta = 0, collisions_list_size = 0;
-#endif
+#endif /* DEBUG */
 
     uint64_t* linear_comb = (uint64_t*)malloc(sizeof(uint64_t) * 10 /* K/64 */);
     uint64_t* linear_comb_next = (uint64_t*)malloc(sizeof(uint64_t) * 10 /* K/64 */);
@@ -54,58 +57,63 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
     // Number of bits to store 1 for every possible different values for delta
     uint64_t nb_keys_bits = 1ULL << (L - 3);
 
+#if defined(FILTER)
     // Used to track which combination are present
     uint64_t** collisions_first_pass = (uint64_t**)malloc( M * sizeof(uint64_t*));
     uint64_t** collisions_second_pass = (uint64_t**)malloc( M * sizeof(uint64_t*));
+    CHECK_MALLOC(collisions_first_pass);
+    CHECK_MALLOC(collisions_second_pass);
+#endif /* FILTER */
 
     // Holds the linear combinations made for each pass
     lc_tab** L2s = (lc_tab**)malloc(M * sizeof(lc_tab*));
-    lc_tab** L3s = (lc_tab**)malloc(M * sizeof(lc_tab*));
+    lc_tab** L1s = (lc_tab**)malloc(M * sizeof(lc_tab*));
     lc_tab** L2s_sorted = (lc_tab**)malloc(M * sizeof(lc_tab*));
-    lc_tab** L3s_sorted = (lc_tab**)malloc(M * sizeof(lc_tab*));
+    lc_tab** L1s_sorted = (lc_tab**)malloc(M * sizeof(lc_tab*));
 
-    CHECK_MALLOC(collisions_first_pass);
-    CHECK_MALLOC(collisions_second_pass);
     CHECK_MALLOC(L2s);
-    CHECK_MALLOC(L3s);
+    CHECK_MALLOC(L1s);
     CHECK_MALLOC(L2s_sorted);
-    CHECK_MALLOC(L3s_sorted);
+    CHECK_MALLOC(L1s_sorted);
 
     for (idx_win = 0; idx_win < M; idx_win++) {
+
+#if defined(FILTER)
         collisions_first_pass[idx_win] = (uint64_t*)malloc(nb_keys_bits);
         collisions_second_pass[idx_win] = (uint64_t*)malloc(nb_keys_bits);
-
-        L2s[idx_win] = malloc(sizeof(lc_tab));
-        L3s[idx_win] = malloc(sizeof(lc_tab));
-        L2s_sorted[idx_win] = malloc(sizeof(lc_tab));
-        L3s_sorted[idx_win] = malloc(sizeof(lc_tab));
-
-        CHECK_MALLOC(L2s[idx_win]);
-        CHECK_MALLOC(L3s[idx_win]);
-        CHECK_MALLOC(L2s_sorted[idx_win]);
-        CHECK_MALLOC(L3s_sorted[idx_win]);
-        
-        L2s[idx_win]->p  = P2;
-        L3s[idx_win]->p = P1;
-        L2s_sorted[idx_win]->p  = P2;
-        L3s_sorted[idx_win]->p = P1;
-
-        L2s[idx_win]->current_size = 0;
-        L3s[idx_win]->current_size = 0;
-        L2s_sorted[idx_win]->current_size = 0;
-        L3s_sorted[idx_win]->current_size = 0;
-
-        L2s[idx_win]->lcs = LC_MALLOC(nelem_p2, P2); 
-        L3s[idx_win]->lcs = LC_MALLOC(nelem_p1, P1);
-        L2s_sorted[idx_win]->lcs = LC_MALLOC(nelem_p2, P2); 
-        L3s_sorted[idx_win]->lcs = LC_MALLOC(nelem_p1, P1); 
-
         CHECK_MALLOC(collisions_first_pass[idx_win]);
         CHECK_MALLOC(collisions_second_pass[idx_win]);
+#endif /* FILTER */
+
+        L2s[idx_win] = malloc(sizeof(lc_tab));
+        L1s[idx_win] = malloc(sizeof(lc_tab));
+        L2s_sorted[idx_win] = malloc(sizeof(lc_tab));
+        L1s_sorted[idx_win] = malloc(sizeof(lc_tab));
+
+        CHECK_MALLOC(L2s[idx_win]);
+        CHECK_MALLOC(L1s[idx_win]);
+        CHECK_MALLOC(L2s_sorted[idx_win]);
+        CHECK_MALLOC(L1s_sorted[idx_win]);
+        
+        L2s[idx_win]->p  = P2;
+        L1s[idx_win]->p = P1;
+        L2s_sorted[idx_win]->p  = P2;
+        L1s_sorted[idx_win]->p = P1;
+
+        L2s[idx_win]->current_size = 0;
+        L1s[idx_win]->current_size = 0;
+        L2s_sorted[idx_win]->current_size = 0;
+        L1s_sorted[idx_win]->current_size = 0;
+
+        L2s[idx_win]->lcs = LC_MALLOC(nelem_p2, P2); 
+        L1s[idx_win]->lcs = LC_MALLOC(nelem_p1, P1);
+        L2s_sorted[idx_win]->lcs = LC_MALLOC(nelem_p2, P2); 
+        L1s_sorted[idx_win]->lcs = LC_MALLOC(nelem_p1, P1); 
+
         CHECK_MALLOC(L2s[idx_win]->lcs);
-        CHECK_MALLOC(L3s[idx_win]->lcs);
+        CHECK_MALLOC(L1s[idx_win]->lcs);
         CHECK_MALLOC(L2s_sorted[idx_win]->lcs);
-        CHECK_MALLOC(L3s_sorted[idx_win]->lcs);
+        CHECK_MALLOC(L1s_sorted[idx_win]->lcs);
     }
 
     // A generic holder for the current indexes
@@ -115,7 +123,7 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
     // Generic alias on the sorted arrays
 
     lc_tab** L2s_alias_sorted = (lc_tab**)malloc(M * sizeof(lc_tab*));
-    lc_tab** L3s_alias_sorted = (lc_tab**)malloc(M * sizeof(lc_tab*));
+    lc_tab** L1s_alias_sorted = (lc_tab**)malloc(M * sizeof(lc_tab*));
 
     // Precomputed mask for the window on which we want collision
     uint64_t sigmask = (1ULL << L) - 1;
@@ -139,18 +147,22 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
         }
         /* End of the Canteaut-Chabaud stuff. We now have a proper Iset to work with. */
         
-        // Reset previous itereation stuff
+        // Reset previous iteration stuff
         for (idx_win = 0; idx_win < M; idx_win++) {
+
+#if defined(FILTER)
             memset(collisions_first_pass[idx_win], 0, nb_keys_bits);
             memset(collisions_second_pass[idx_win], 0, nb_keys_bits);
+#endif /* FILTER */
 
             L2s[idx_win]->current_size = 0;
-            L3s[idx_win]->current_size = 0;
+            L1s[idx_win]->current_size = 0;
+            L2s_sorted[idx_win]->current_size = 0;
+            L1s_sorted[idx_win]->current_size = 0;
         }
-        
+
+#if defined(FILTER)
         // 1st pass
-        comb_t comb_struct;
-        comb_diff_t comb_diff;
         memset(combinations_p1, 0, (P1 + 1) * sizeof(uint16_t));
         init_combination(&comb_struct,combinations_p1, P1, 320 /*K/2*/);
 
@@ -168,9 +180,10 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
             
             next_combination(&comb_struct, &comb_diff);
         }
+#endif /* FILTER */
         
         // 2nd pass
-        memset(combinations_p2, 0, (P2 + 1)*sizeof(uint16_t));
+        memset(combinations_p2, 0, (P2 + 1) * sizeof(uint16_t));
         init_combination(&comb_struct,combinations_p2, P2, 320 /*K/2*/);
         for (i = 0; i < nelem_p2; i++) {
             for (idx_win = 0; idx_win < M; idx_win++) {
@@ -182,21 +195,25 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 
                 delta &= sigmask;
 
+#if defined(FILTER)
                 if (STERN_GET(collisions_first_pass[idx_win], delta)) {
+#endif /* FILTER */
+
                     lc* elem = LC_TAB_GET(L2s[idx_win], L2s[idx_win]->current_size);
                     memcpy(elem->indexes, comb_struct.combination, P2 * sizeof(uint16_t));
 
                     elem->delta = delta;
-                    STERN_SET_ONE(collisions_second_pass[idx_win], delta);
                     L2s[idx_win]->current_size++;
+#if defined(FILTER)
+                    STERN_SET_ONE(collisions_second_pass[idx_win], delta);
                 }
-
-                next_combination(&comb_struct, &comb_diff);
+#endif /* FILTER */
             }
+            next_combination(&comb_struct, &comb_diff);
         }
         
         // 3rd pass
-        memset(combinations_p1, 0, (P1 + 1)*sizeof(uint16_t));
+        memset(combinations_p1, 0, (P1 + 1) * sizeof(uint16_t));
         init_combination(&comb_struct,combinations_p1, P1, 320 /*K/2*/);
         for (i = 0; i < nelem_p1; i++) {
             for (idx_win = 0; idx_win < M; idx_win++) {
@@ -207,19 +224,22 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                 }
 
                 delta &= sigmask;
-
+#if defined(FILTER)
                 if (STERN_GET(collisions_second_pass[idx_win], delta)) {
-                    lc* elem = LC_TAB_GET(L3s[idx_win], L3s[idx_win]->current_size);
-                    memcpy(elem->indexes, comb_struct.combination, P1*sizeof(uint16_t));
+#endif /* FILTER */
+                    lc* elem = LC_TAB_GET(L1s[idx_win], L1s[idx_win]->current_size);
+                    memcpy(elem->indexes, comb_struct.combination, P1 * sizeof(uint16_t));
                     elem->delta = delta;
-                    L3s[idx_win]->current_size++;
+                    L1s[idx_win]->current_size++;
+#if defined(FILTER)
                 }
+#endif /* FILTER */
 
-                next_combination(&comb_struct, &comb_diff);
             }
+            next_combination(&comb_struct, &comb_diff);
         }
 
-        /* From here, L3s[i][:L3s_size[i]] and L2s[i][:L2s_size[i]]
+        /* From here, L1s[i][:L1s_size[i]] and L2s[i][:L2s_size[i]]
         *  contains the LCs that WILL collide.
         * So we sort em all. */
 
@@ -227,11 +247,11 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
         for (idx_win = 0; idx_win < M; idx_win++) {
             
             L2s_sorted[idx_win]->current_size = L2s[idx_win]->current_size;
-            L3s_sorted[idx_win]->current_size = L3s[idx_win]->current_size;
+            L1s_sorted[idx_win]->current_size = L1s[idx_win]->current_size;
 
             // We have to use aliases to avoid mixing up the LXs_sorted and LXs pointers (radixsort returns one or the other, depending on the radix_nlen parameter.)
             L2s_alias_sorted[idx_win] = radixsort(L2s[idx_win], L2s_sorted[idx_win], L2s[idx_win]->current_size, aux);
-            L3s_alias_sorted[idx_win] = radixsort(L3s[idx_win], L3s_sorted[idx_win], L3s[idx_win]->current_size, aux);
+            L1s_alias_sorted[idx_win] = radixsort(L1s[idx_win], L1s_sorted[idx_win], L1s[idx_win]->current_size, aux);
         }
         
         // Now that everything is sorted,  we can actually match all the pairs to get the collisions.
@@ -247,12 +267,12 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 
                 // Xor the first P2 rows
 #if defined(AVX512_ENABLED)
-                row = (void*)Glw->rows[LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->indexes[0]];
+                row = (void*)Glw->rows[LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->indexes[0] + 320];
 
                 __m512i linear_comb_high = _mm512_loadu_si512(row);
                 __m128i linear_comb_low = _mm_loadu_si128(row + 64 /* 512/8 */ );
                 for (i = 1; i < P2; i++) {
-                    row = (void*)Glw->rows[LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->indexes[i]];
+                    row = (void*)Glw->rows[LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->indexes[i] + 320];
                     linear_comb_high = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row));
                     linear_comb_low = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row + 64 /* 512/8 */));
                 }
@@ -261,24 +281,25 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                 for (i = 0; i < P2; i++) {
                     mxor(linear_comb, (uint64_t*)Glw->rows[LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->indexes[i] + 320], 10 /* K/64 */);
                 }
-#endif
+#endif /* AVX512_ENABLED */
+                for (index_third = save_index_third; index_third < L1s_alias_sorted[idx_win]->current_size && LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->delta >= LC_TAB_GET(L1s_alias_sorted[idx_win], index_third)->delta; index_third++) {
 
-                for (index_third = save_index_third; index_third < L3s_alias_sorted[idx_win]->current_size && LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->delta == LC_TAB_GET(L3s_alias_sorted[idx_win], index_third)->delta; index_third++) {
+                    if (LC_TAB_GET(L2s_alias_sorted[idx_win], index_second)->delta > LC_TAB_GET(L1s_alias_sorted[idx_win], index_third)->delta) continue;
 
 #if defined(DEBUG)
                     nb_collisions++;
-#endif
+#endif /* DEBUG */
 
                     // Xor the P1 other rows and xor it to the first result
 #if defined(AVX512_ENABLED)
-                    row = (void*)Glw->rows[LC_TAB_GET(L3s_alias_sorted[idx_win],index_third)->indexes[0]];
+                    row = (void*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win],index_third)->indexes[0]];
 
                     // Load the two new rows and add them to the LC of the two previous ones.
                     __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
                     __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row + 64 /* 512/(8 * sizeof(void)) */));
 
                     for (i = 1; i < P1; i++) {
-                        row = (void*)Glw->rows[LC_TAB_GET(L3s_alias_sorted[idx_win], index_second)->indexes[i]];
+                        row = (void*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win], index_second)->indexes[i]];
                         linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row4));
                         linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64 /* 512/(8 * sizeof(void)) */));
                     }
@@ -290,9 +311,9 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 #else
                     memcpy(linear_comb_next, linear_comb, 80 /* K/8 */ );
                     for (i = 0; i < P1; i++) {
-                        mxor(linear_comb_next, (uint64_t*)Glw->rows[LC_TAB_GET(L3s_alias_sorted[idx_win],index_third)->indexes[i]], 10 /* K/64 */);
+                        mxor(linear_comb_next, (uint64_t*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win],index_third)->indexes[i]], 10 /* K/64 */);
                     }
-#endif
+#endif /* AVX512_ENABLED */
 
                     wt = popcnt64_unrolled(linear_comb_next, 10 /* K/64 */);
                     total++;
@@ -310,9 +331,7 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                             min_comb[i] += 320;
                         }
 
-                        memcpy(min_comb + P2, LC_TAB_GET(L3s_alias_sorted[idx_win], index_third)->indexes, P1 * sizeof(uint16_t));
-                        //printf("min_comb[2]2:%lu\n", min_comb[2]);
-                        //printf("alala %lu\n", LC_TAB_GET(L3s_alias_sorted[idx_win], index_third)->indexes[0]);
+                        memcpy(min_comb + P2, LC_TAB_GET(L1s_alias_sorted[idx_win], index_third)->indexes, P1 * sizeof(uint16_t));
 
                         memcpy(min_cw, linear_comb_next, 80 /* K/8 */);
                         memcpy(column_perms_copy, column_perms, N * sizeof(rci_t));
@@ -337,9 +356,9 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
         }
     }
 
-#ifdef DEBUG
+#if defined(DEBUG)
     printf("# Average number of collisions / iter : %.3f\n", (double)nb_collisions/((double)iter * M));
-#endif
+#endif /* DEBUG */
     printf("# Total number of iterations done : %lu\n", iter);
     printf("# Iter/s : %.3f\n", (double)iter/(double)time_sec);
     printf("# Number of words analysed : %lu\n", total);
@@ -356,28 +375,35 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
     free(column_perms);
 
     for (idx_win = 0; idx_win < M; idx_win++) {
-        free(collisions_first_pass[idx_win]);
-        free(collisions_second_pass[idx_win]);
+
+
         free(L2s[idx_win]->lcs);
-        free(L3s[idx_win]->lcs);
+        free(L1s[idx_win]->lcs);
         free(L2s_sorted[idx_win]->lcs);
-        free(L3s_sorted[idx_win]->lcs);
+        free(L1s_sorted[idx_win]->lcs);
     }
 
     free(L2s);
-    free(L3s);
+    free(L1s);
     free(L2s_sorted);
-    free(L3s_sorted);
+    free(L1s_sorted);
+
+    free(L2s_alias_sorted);
+    free(L1s_alias_sorted);
+
+    free(lc_indexes);
+    free(aux);
+
+#if defined(FILTER)
+    for (idx_win = 0; idx_win < M; idx_win++) {
+        free(collisions_first_pass[idx_win]);
+        free(collisions_second_pass[idx_win]);
+    }
 
     free(collisions_first_pass);
     free(collisions_second_pass);
+#endif /* FILTER */
 
-    free(L2s_alias_sorted);
-    free(L3s_alias_sorted);
-
-    free(lc_indexes);
-
-    free(aux);
 
     return result;
 }

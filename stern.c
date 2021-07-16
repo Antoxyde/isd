@@ -20,6 +20,8 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
 
     int min_wt = K - 1, wt = 0;
 
+    void* row = NULL;
+
 #if defined(AVX512_ENABLED)
     uint64_t mask[10] /* K/64 */;
     memset(mask, 0, 80 /* K/8 */);
@@ -295,13 +297,13 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                     row = (void*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win],index_third)->indexes[0]];
 
                     // Load the two new rows and add them to the LC of the two previous ones.
-                    __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row3));
+                    __m512i linear_comb_high_next = _mm512_xor_si512(linear_comb_high, _mm512_loadu_si512(row));
                     __m128i linear_comb_low_next = _mm_xor_si128(linear_comb_low, _mm_loadu_si128(row + 64 /* 512/(8 * sizeof(void)) */));
 
                     for (i = 1; i < P1; i++) {
                         row = (void*)Glw->rows[LC_TAB_GET(L1s_alias_sorted[idx_win], index_second)->indexes[i]];
-                        linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row4));
-                        linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row4 + 64 /* 512/(8 * sizeof(void)) */));
+                        linear_comb_high_next = _mm512_xor_si512(linear_comb_high_next, _mm512_loadu_si512(row));
+                        linear_comb_low_next = _mm_xor_si128(linear_comb_low_next, _mm_loadu_si128(row + 64 /* 512/(8 * sizeof(void)) */));
                     }
 
                     // Save the result of the LC of the P1+P2 rows

@@ -8,8 +8,8 @@
 #include "m4ri/m4ri.h"
 #include <stdint.h>
 
-#define M       10         // Number of window
-#define P1      3         // Stern's P parameter
+#define M       1         // Number of window
+#define P1      4         // Stern's P parameter
 #define P2      3         // Stern's P parameter
 #define N       1280      // Code length
 #define K       640       // Code dimension

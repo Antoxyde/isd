@@ -16,23 +16,26 @@ int main(void) {
     printf("# Running with the following configuration :\n");
 
 #if defined(DEBUG)
-    printf("# Mode: debug\n");
+    printf("# Mode              debug\n");
 #else
-    printf("# Mode: release\n");
+    printf("# Mode              release\n");
 #endif
 
 #if defined(__AVX512DQ__) && defined(__AVX512F__) && defined(__AVX512VL__)
-    printf("# AVX512: enabled\n");
+    printf("# AVX512            enabled\n");
 #else
-    printf("# AVX512: disabled\n");
+    printf("# AVX512            disabled\n");
 #endif
 
-    printf("# Algorithm: Stern\n");
-    printf("# L: %d\n", L);
-    printf("# Radix width: %d\n", RADIX_WIDTH);
-    printf("# Radix nlen: %d\n", RADIX_LEN);
-    printf("# Challenge file: %s\n", challenge_file);
-    printf("# Time (s): %lu\n", time_sec);
+    printf("# Algorithm         Stern\n");
+    printf("# L                 %d\n", L);
+    printf("# M                 %d\n", M);
+    printf("# P1                %d\n", P1);
+    printf("# P2                %d\n", P2);
+    printf("# Radixsort width   %d\n", RADIX_WIDTH);
+    printf("# Radixsort nlen    %d\n", RADIX_LEN);
+    printf("# Challenge file    %s\n", challenge_file);
+    printf("# Time (s)          %lu\n", time_sec);
 
     mzd_t* G = mzd_init(K, N);
     mzd_t* H = mzd_init(K, N);
@@ -49,7 +52,7 @@ int main(void) {
     }
 
     mzd_t* Hct = mzd_mul(NULL, H, mzd_transpose(NULL, min_cw), 0);
-    printf("# Sanity check: %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
+    printf("# Sanity check      %s\n" , mzd_is_zero(Hct) ? "ok" : "nok");
 
     mzd_free(min_cw);
     mzd_free(G);

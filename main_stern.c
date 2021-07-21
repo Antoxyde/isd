@@ -32,6 +32,16 @@ int main(void) {
     printf("# M                 %d\n", M);
     printf("# P1                %d\n", P1);
     printf("# P2                %d\n", P2);
+#if defined(FILTER)
+    printf("# FILTER            ON\n");
+#else
+    printf("# FILTER            OFF\n");
+#endif /* FILTER */
+
+#if defined(L2_THRESHOLD)
+    printf("# L2_SIZE_THRESHOLD %llu\n", L2_SIZE_THRESHOLD);
+#endif /* L2_THRESHOLD */
+
     printf("# Radixsort width   %d\n", RADIX_WIDTH);
     printf("# Radixsort nlen    %d\n", RADIX_LEN);
     printf("# Challenge file    %s\n", challenge_file);

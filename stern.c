@@ -209,6 +209,11 @@ mzd_t* stern(mzd_t* G, uint64_t time_sec) {
                 }
 #endif /* FILTER */
             }
+
+
+#if defined(L2_THRESHOLD)
+            if (i >= L2_SIZE_THRESHOLD) break; 
+#endif /* L2_THRESHOLD*/
             next_combination(&comb_struct, &comb_diff);
         }
         
@@ -440,7 +445,7 @@ lc_tab* denomsort_r(lc_tab* T, lc_tab* Ts, uint64_t pos, uint32_t* Aux) {
     return Ts;
 }
 
-/* Sort T and write the result in Ts
+/* Sort T and write the result in Ts, but might swap these two pointers depending on RADIX_LEN's parity
 * T: Input array 
 * Ts: Output array
 * Aux: array used in denomsort, preallocated to avoid allocation at each call */

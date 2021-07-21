@@ -8,13 +8,17 @@
 #include "m4ri/m4ri.h"
 #include <stdint.h>
 
-#define M       5         // Number of window
-#define P1      3         // Stern's P parameter
+#define M       1         // Number of window
+#define P1      4         // Stern's P parameter
 #define P2      3         // Stern's P parameter
 #define N       1280      // Code length
 #define K       640       // Code dimension
 #define L       20        // Stern's L paramter, window size 
 #define CC      320       // Number of canteaut-chabaud iterations
+
+#if defined(L2_THRESHOLD)
+#define L2_SIZE_THRESHOLD       (1ULL << 16)
+#endif /* L2_THRESHOLD*/
 
 #define RADIX_WIDTH 2
 #define RADIX_LEN (L/2)

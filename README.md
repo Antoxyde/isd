@@ -11,15 +11,23 @@ Both of them are implemented with AVX-512 support.
 
 ## Compilation
 
+This is only works for Stern's implementation.
+
 3 targets : debug, run, avx.
 
 * debug : no avx512, debug stuff on, optimizations off
-* run: no avx512, optimisations on
+* run: no avx512, optimizations on
 * avx: avx512 on, optimizations on
 
 Use `make <target>` to compile the target you want.
 
-## 
+Compilation options :
+
+* `FILTER` : If enabled, filter out non-colliding elements of L1 and L2 before the sort phase.
+* `L2_THRESHOLD` : If enabled, `L2_SIZE_THREHOLD` will be the maximum size of L2. This allows a better control on memory usage than changing P1 or P2.
+
+To compile with it, add `-Doption` in the right target's CFLAGS in the Makefile.
+
 # Credits
 
 * [m4ri](https://bitbucket.org/malb/m4ri/src/master/)
